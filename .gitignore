@@ -1,0 +1,16 @@
+# dependencies / build output
+node_modules/
+dist/
+
+# 원본 자료 (앱에서 쓰는 mp3는 app/public/assets 에 있음)
+/files/
+/files.zip
+/*.mp3
+
+# local settings
+**/.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
