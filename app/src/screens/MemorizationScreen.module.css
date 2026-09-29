@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
   background: rgba(17, 19, 25, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -289,7 +289,7 @@
 /* ── Calibration banner ── */
 .calibrateBanner {
   position: sticky;
-  top: 60px;
+  top: calc(60px + env(safe-area-inset-top));
   z-index: 15;
   display: flex;
   align-items: center;
@@ -381,7 +381,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  padding: 24px 16px 20px;
+  padding: 24px 16px calc(20px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--surface) 60%, transparent);
 }
 

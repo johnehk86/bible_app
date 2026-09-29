@@ -56,3 +56,4 @@ npm run preview  # 빌드 결과 미리보기
 - [04_features.md](04_features.md) — 오디오 플레이어, 하이라이트, 타이밍 맞추기
 - [05_ui-design.md](05_ui-design.md) — 디자인 토큰, 레이아웃
 - [06_issues-and-roadmap.md](06_issues-and-roadmap.md) — 발견된 버그/개선점, 로드맵
+- [07_pwa-install.md](07_pwa-install.md) — 앱 설치(PWA), 서비스 워커/오프라인, 설치 안내 화면

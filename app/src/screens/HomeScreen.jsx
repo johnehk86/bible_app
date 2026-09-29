@@ -1,4 +1,5 @@
 import { PASSAGES } from '../data/verses.js'
+import { useInstall } from '../pwa.js'
 import styles from './HomeScreen.module.css'
 
 // 날짜마다 바뀌는 오늘의 말씀
@@ -11,6 +12,7 @@ function getTodayPassage() {
 export default function HomeScreen({ onNavigate, onSelectPassage }) {
   const today = getTodayPassage()
   const firstVerse = today.verses[0]
+  const { installed } = useInstall()
 
   return (
     <div className={styles.container}>
@@ -113,6 +115,24 @@ export default function HomeScreen({ onNavigate, onSelectPassage }) {
             </div>
             <span className={styles.soonBadge}>Soon</span>
           </button>
+
+          {!installed && (
+            <button className={`${styles.card} ${styles.cardInstall}`} onClick={() => onNavigate('install')}>
+              <div className={styles.cardIcon}>
+                <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                  <rect x="6" y="2.5" width="12" height="19" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M12 7v7M9 11l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className={styles.cardText}>
+                <span className={styles.cardTitle}>앱 설치하기</span>
+                <span className={styles.cardDesc}>홈 화면에 추가하고 오프라인으로 듣기</span>
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" width="18" height="18" className={styles.chevron}>
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </section>
 
         <footer className={styles.footer}>

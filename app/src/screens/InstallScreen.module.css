@@ -1,0 +1,331 @@
+.container {
+  position: relative;
+  min-height: 100vh;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--surface);
+  overflow-x: hidden;
+}
+
+.zenith {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: 360px;
+  background: radial-gradient(ellipse at 50% 0%,
+    rgba(255, 224, 157, 0.12) 0%,
+    rgba(229, 195, 120, 0.04) 45%,
+    transparent 75%);
+  z-index: 0;
+}
+
+/* ── Top bar ── */
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: rgba(17, 19, 25, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.backBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.backBtn:hover {
+  background: rgba(40, 42, 48, 0.6);
+}
+
+.backBtn:active {
+  transform: scale(0.95);
+}
+
+.barTitle {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+/* ── Content ── */
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px var(--gutter) calc(48px + env(safe-area-inset-bottom));
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 12px 0 8px;
+}
+
+.appIcon {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  border: 1px solid var(--gild-active);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 30px -6px rgba(255, 224, 157, 0.35);
+  margin-bottom: 8px;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.subtitle {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--on-surface-variant);
+}
+
+/* ── Main action ── */
+.primaryBtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 18px;
+  border-radius: 14px;
+  background: linear-gradient(to right, var(--primary-container), var(--primary-dim));
+  color: var(--on-primary);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 24px rgba(229, 195, 120, 0.25);
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.primaryBtn:hover {
+  box-shadow: 0 10px 30px rgba(229, 195, 120, 0.38);
+}
+
+.primaryBtn:active {
+  transform: scale(0.97);
+}
+
+.statusCard,
+.warnCard {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(30, 31, 38, 0.75);
+  border: 1px solid var(--gild-active);
+  box-shadow: var(--glow);
+}
+
+.warnCard {
+  flex-direction: column;
+  gap: 8px;
+  border-color: rgba(255, 180, 171, 0.35);
+  box-shadow: none;
+}
+
+.warnCard .primaryBtn {
+  margin-top: 6px;
+}
+
+.statusIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 224, 157, 0.14);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.statusTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.statusDesc {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+}
+
+.message {
+  text-align: center;
+  font-size: 13px;
+  color: var(--primary);
+}
+
+/* ── Sections ── */
+.section {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(30, 31, 38, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--gild);
+}
+
+.sectionMine {
+  border-color: var(--gild-active);
+  box-shadow: var(--glow);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.sectionIcon {
+  display: inline-flex;
+  color: var(--primary);
+}
+
+.mineBadge {
+  margin-left: auto;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  background: rgba(255, 224, 157, 0.1);
+  border: 1px solid rgba(255, 224, 157, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepNum {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-high);
+  border: 1px solid var(--gild);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stepText {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--on-surface-variant);
+}
+
+.stepText strong {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+/* QR */
+.qrBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr {
+  width: 180px;
+  height: 180px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  box-sizing: content-box;
+}
+
+.qrHint {
+  font-size: 12px;
+  color: var(--outline);
+}
+
+/* Share */
+.shareRow {
+  display: flex;
+  gap: 8px;
+}
+
+.shareInput {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--gild);
+  color: var(--on-surface);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.shareInput:focus {
+  outline: none;
+  border-color: var(--gild-active);
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--surface-high);
+  border: 1px solid var(--gild-active);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 0.15s;
+}
+
+.copyBtn:active {
+  transform: scale(0.95);
+}

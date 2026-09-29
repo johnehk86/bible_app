@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px var(--gutter);
+  padding: calc(12px + env(safe-area-inset-top)) var(--gutter) 12px;
   background: rgba(17, 19, 25, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -292,6 +292,11 @@
 
 .card:not(:disabled):hover .cardTitle {
   color: var(--primary);
+}
+
+.cardInstall {
+  border-style: dashed;
+  border-color: var(--gild-active);
 }
 
 .cardDisabled {
