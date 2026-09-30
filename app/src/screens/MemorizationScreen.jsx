@@ -53,7 +53,6 @@ export default function MemorizationScreen({ passage, onBack }) {
   const [time, setTime] = useState(0)
   const [adjusting, setAdjusting] = useState(false)
   const playerRef = useRef(null)
-  const verseRefs = useRef([])
   const startsRef = useRef(starts)
   startsRef.current = starts
 
@@ -70,19 +69,8 @@ export default function MemorizationScreen({ passage, onBack }) {
 
   const handleTimeUpdate = (t) => {
     setTime(t)
-    const idx = t === 0 ? null : getActiveIndex(t, passage, startsRef.current)
-    setActiveIndex(prev => {
-      if (idx != null && prev !== idx) {
-        const el = verseRefs.current[idx]
-        if (el) {
-          const rect = el.getBoundingClientRect()
-          if (rect.top < 120 || rect.bottom > window.innerHeight - 200) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-        }
-      }
-      return idx
-    })
+    // 자동 스크롤 없음 — 사용자가 보고 있는 위치(한국어/아랍어)를 그대로 유지
+    setActiveIndex(t === 0 ? null : getActiveIndex(t, passage, startsRef.current))
   }
 
   // 타이밍 값 변경 (앞뒤 절 순서가 뒤집히지 않게 제한)
@@ -178,7 +166,6 @@ export default function MemorizationScreen({ passage, onBack }) {
               return (
                 <div key={`ko-${v.verse}`} className={adjusting ? styles.verseAdjustWrap : undefined}>
                   <p
-                    ref={el => verseRefs.current[i] = el}
                     className={`${styles.koVerse} ${verseClass(i)}`}
                     onClick={() => !adjusting && playVerse(i)}
                   >
