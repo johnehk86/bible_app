@@ -1,48 +1,42 @@
 # 04. 핵심 기능 동작 분석
 
+> 2026-09-30 개편: 절 타이밍 **자동 계산** 도입, 수동 "탭하기" 캘리브레이션 → **타이밍 조절 모드**(듣기 · −/+ · 지금)로 교체.
+
 ## 1. 오디오 플레이어 (`components/AudioPlayer.jsx`)
 | 기능 | 구현 |
 |------|------|
-| 재생/일시정지 | `togglePlay()` → `audio.play()/pause()` 후 `isPlaying` 토글 |
-| 진행바 | `progress = currentTime / duration * 100` → fill 너비 + thumb 위치 |
-| 탐색(seek) | 진행바 `onClick` / `onTouchStart` / `onTouchMove` → 클릭 x 좌표 비율로 `audio.currentTime` 설정 |
-| 드래그 | 터치에서만 `isDragging` 사용 (마우스 드래그 미지원) |
-| 배속 | `SPEED_OPTIONS` 버튼 → `audio.playbackRate = s` |
-| 시간 표시 | `formatTime()` → `m:ss` |
-| 종료 | `ended` 이벤트 → `isPlaying=false`, `onTimeUpdate(0)` |
+| 재생/일시정지 | `audio.play()/pause()` — 버튼 상태(`isPlaying`)는 **audio의 play/pause 이벤트로만** 갱신 (재생 실패 시 상태 불일치 없음) |
+| 진행바 탐색 | 포인터 이벤트(`onPointerDown/Move/Up` + `setPointerCapture`) → 마우스·터치 모두 드래그 탐색, `touch-action: none` |
+| 배속 | `SPEED_OPTIONS` → `playbackRate` |
+| 종료 | `ended` → `onTimeUpdate(0)` (강조 해제) |
+| **외부 제어 (forwardRef)** | `playFrom(t)` t초부터 재생 / `playRange(t, end)` end초에서 자동 정지(한 절만 듣기) / `getCurrentTime()` |
 
-- 이벤트 리스너는 `useEffect([isDragging, onTimeUpdate])`에서 등록/해제.
-  `onTimeUpdate`(부모의 `handleTimeUpdate`)는 `timestamps`가 바뀔 때마다 새로 만들어지므로 리스너도 재등록됨.
-- 반복 재생(loop), 구간 반복, 이전/다음 절 이동 기능은 없음.
+- `onTimeUpdate`는 ref로 최신 콜백을 참조 → 리스너 재등록 없음
 
-## 2. 절 하이라이트 (가라오케 방식) — `MemorizationScreen.jsx`
-Spec상 Phase 1에서는 보류였으나 **이미 구현되어 있음**.
+## 2. 절 타이밍 데이터 (`data/verses.js`)
+- 각 절: `start`(시작 초), 발췌 구절은 `end`(끝 초, 마지막 절은 `null`)도 가짐
+- **자동 계산 방법** (2026-09-30, 스크립트는 저장소에 없음 — 필요시 재작성):
+  1. 헤드리스 Chrome `decodeAudioData`로 mp3 → 10ms 단위 dB 곡선
+  2. 무음 판정 임계값 = max(하위5% + 6dB, 상위10% − 35dB), 0.2초 이상 무음 = 쉼
+  3. 쉼 사이 말소리 구간(segment)들을 절 순서대로 묶는 DP:
+     비용 = Σ (묶음 길이 − 예상 길이)² / 예상 길이 − 0.6 × 경계 쉼 길이(최대 2초)
+     예상 길이 = 절 아랍어 글자 수(모음부호 제외) × 전체 발화 속도
+  4. 절 시작 = 해당 segment 시작 − 0.15초 (첫 절은 0)
+- **발췌 구절 4개** (마 5:1-16, 요 1:1-18, 요 15:1-17, 고전 13:1-13): 음원은 **범위 전체**를 읽고 텍스트는 일부 절만 있음.
+  → 음원 속 모든 절을 단위로 정렬 (텍스트에 없는 절 길이 = 영어 KJV 글자 수 ÷ 1.8 근사) 후 본문 절의 start/end만 추출
+- 검증: 신명기 자동값 0/6.5/13.6/19.1/31.6/38 ≈ 기존 수동값 0/7/14/19/32/38. 로마서 24절은 기존 8초가 틀렸고 4.5초가 맞음(발화 길이 비율로 확인)
 
-```js
-getActiveVerseIndex(currentTime, timestamps)
-  // currentTime >= timestamps[i] 를 만족하는 마지막 i 반환
-```
-- `handleTimeUpdate(time)`:
-  - `time === 0` → `activeIndex = null` (하이라이트 해제 = 모든 절 보통 표시)
-  - 그 외 → 활성 절 계산, 절이 바뀌었고 해당 한국어 절이 화면 하단 180px 영역 아래에 있으면 `scrollIntoView({block:'center'})`
-- 표시: 활성 절 `styles.verseActive`, 나머지 `styles.verseInactive` (한국어/아랍어 모두 같은 인덱스로 동기화)
-- 자동 스크롤은 **한국어 절 기준**만 (아랍어 절 ref 없음)
+## 3. 절 강조 (가라오케) — `MemorizationScreen.jsx`
+- `getActiveIndex(t)`: `start ≤ t` 인 마지막 절, 단 그 절의 끝(`end` 또는 다음 절 start)을 지나면 `null`
+- `null`이면 강조 없음. 발췌 구절에서 재생 중 `null`이면 플레이어 위에 "♪ 지금은 화면에 없는 절을 읽고 있어요" 표시
+- 절이 바뀔 때 화면 밖이면 `scrollIntoView` (한국어 절 기준)
+- **구절(한국어/아랍어)을 누르면 그 절부터 재생** (`playFrom(start − 0.1)`)
 
-## 3. 타이밍 맞추기 (캘리브레이션) — `MemorizationScreen.jsx`
-사용자가 오디오를 들으며 각 절 시작 시점에 탭하여 timestamp를 기록하는 기능.
-
-흐름:
-1. 상단 우측 시계 아이콘 → `startCalibrating()`
-   - `timestamps = [0, null, null, ...]`, `markedCount = 0`
-2. 배너: "🎵 재생 후, 각 절이 들릴 때 해당 절을 탭하세요  (n / 절수-1 완료)"
-3. 한국어 절 탭 → `markVerse(i)`: `currentTimeRef.current`를 소수점 1자리로 반올림하여 `timestamps[i]`에 기록, `markedCount++`
-   - 첫 절(i=0)은 탭 무시 (항상 0초)
-   - 표시: 첫 절 `verseCalFirst`, 기록됨 `verseCalMarked`(✓ + "12.3s"), 미기록 `verseCalPending`("탭")
-4. 우측 버튼:
-   - `markedCount < 절수-1` → "취소" → `cancelCalibrating()` (저장된 값 복원)
-   - 다 채우면 "완료" → `finishCalibrating()`:
-     null 남은 절은 `이전값 + 1`로 채움 → `localStorage['timestamps_<id>']`에 저장
-5. 다음 진입 시 `loadTimestamps(passage)`: localStorage 값 우선, 없으면 verses.js의 `timestamp`
-
-> 저장 위치가 **브라우저 localStorage**라서 기기/브라우저마다 따로 저장됨.
-> 확정된 타이밍은 개발자가 verses.js에 옮겨 적어야 모든 사용자에게 적용됨.
+## 4. 타이밍 조절 모드
+- 상단바 **[⏱ 타이밍]** → 조절 모드, **[완료]**로 종료. 안내 배너(sticky)에 사용법 + 저장 상태 + "자동값으로 되돌리기"
+- 한국어 절마다 조절 줄: **[▶ 듣기]** (그 절만 재생 후 자동 정지) · **[− 시간 +]** (0.5초 단위) · **[지금]** (현재 재생 위치를 절 시작으로)
+- 연속 구절의 첫 절은 "처음"(0초) 고정. 연속 구절은 앞뒤 절과 0.3초 이상 간격 유지하도록 제한
+- 조절 중에도 강조가 실시간 반영되어 바로 확인 가능
+- 저장: 변경 즉시 `localStorage['timing_v2_<id>']` (자동값과 같아지면 키 삭제). 절 수가 다르면 무시
+- 예전 `timestamps_<id>` 키(옛 캘리브레이션, 잘못된 값 많음)는 **읽지 않음** → "색이 멈추고 음원만 나오던" 문제 원인 제거
+- 저장 위치가 기기 브라우저라 기기마다 따로. 모두에게 적용하려면 verses.js의 start 값을 수정

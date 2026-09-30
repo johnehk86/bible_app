@@ -103,6 +103,13 @@
   text-shadow: 0 0 24px rgba(255, 224, 157, 0.18);
 }
 
+.heroHint {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--outline);
+}
+
 .heroAr {
   font-family: var(--font-arabic);
   font-size: 15px;
@@ -152,6 +159,8 @@
   margin: 0 -10px;
   border-radius: 10px;
   color: var(--on-surface);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition: color 0.4s ease, background 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease;
 }
 
@@ -182,6 +191,8 @@
   margin: 0 -10px;
   border-radius: 10px;
   color: var(--tertiary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition: color 0.4s ease, background 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease;
 }
 
@@ -251,125 +262,192 @@
   text-shadow: 0 0 12px rgba(255, 224, 157, 0.5);
 }
 
-/* ── Calibrate button (top-right) ── */
-.calibrateBtn {
-  width: 40px;
-  height: 40px;
+/* ── Timing adjust button (top-right) ── */
+.adjustBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 12px;
   border-radius: 999px;
   color: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s, transform 0.15s;
-  font-size: 13px;
+  border: 1px solid var(--gild);
+  background: rgba(30, 31, 38, 0.6);
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, transform 0.15s, border-color 0.2s;
 }
 
-.calibrateBtn:hover {
-  background: rgba(40, 42, 48, 0.6);
+.adjustBtn:hover {
+  border-color: var(--gild-active);
 }
 
-.calibrateBtn:active {
+.adjustBtn:active {
   transform: scale(0.95);
 }
 
-.calibrateDone {
-  width: auto;
-  height: 34px;
-  padding: 0 14px;
+.adjustDone {
+  padding: 0 16px;
   color: var(--on-primary);
+  border-color: transparent;
   background: linear-gradient(to right, var(--primary-container), var(--primary-dim));
   box-shadow: 0 4px 14px rgba(229, 195, 120, 0.2);
 }
 
-.calibrateDone:hover {
-  background: linear-gradient(to right, var(--primary-container), var(--primary-dim));
-}
-
-/* ── Calibration banner ── */
-.calibrateBanner {
+/* ── Adjust banner ── */
+.adjustBanner {
   position: sticky;
   top: calc(60px + env(safe-area-inset-top));
   z-index: 15;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin: 4px 16px 0;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(40, 42, 48, 0.9);
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(40, 42, 48, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--gild-active);
   box-shadow: var(--glow);
+}
+
+.adjustTitle {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.adjustDesc {
+  margin-top: 4px;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--on-surface-variant);
+  word-break: keep-all;
 }
 
-.calibrateCount {
-  flex-shrink: 0;
+.adjustDesc b {
+  color: var(--primary);
+}
+
+.adjustFoot {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adjustSaved {
+  font-size: 11px;
+  color: var(--outline);
+}
+
+.resetBtn {
+  font-size: 11px;
   font-weight: 700;
   color: var(--primary);
-  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* ── Calibration verse states ── */
-.verseCalFirst {
-  color: rgba(226, 226, 235, 0.4) !important;
+/* ── Tuner (절별 조절 줄) ── */
+.verseAdjustWrap {
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed rgba(77, 70, 57, 0.6);
 }
 
-.verseCalPending {
-  color: var(--on-surface) !important;
-  cursor: pointer;
-  box-shadow: inset 2px 0 0 rgba(229, 195, 120, 0.4);
-  transition: background 0.15s !important;
+.verseAdjustWrap:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
-.verseCalPending:hover {
-  background: rgba(255, 224, 157, 0.05);
+.tuner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 24px;
 }
 
-.verseCalPending:active {
-  background: rgba(255, 224, 157, 0.12);
-}
-
-.verseCalMarked {
-  color: var(--primary-dim) !important;
-  box-shadow: inset 2px 0 0 var(--primary-container);
-  opacity: 0.8;
-}
-
-.checkMark {
+.tunerPlay,
+.tunerNow,
+.tunerStep {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--gild);
+  background: var(--surface-high);
   color: var(--primary);
   font-size: 12px;
-}
-
-.tapMark {
-  display: inline-block;
-  color: var(--primary);
-  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0;
-  animation: pulse 1.4s ease-in-out infinite;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s, border-color 0.2s, background 0.2s;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+.tunerPlay:active,
+.tunerNow:active,
+.tunerStep:active {
+  transform: scale(0.94);
+  background: rgba(255, 224, 157, 0.14);
 }
 
-.tsLabel {
-  margin-left: 8px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--surface-high);
-  font-family: var(--font-sans);
-  font-size: 10px;
-  color: var(--primary-dim);
+.tunerPlay {
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.tunerTime {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 4px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-lowest);
+  border: 1px solid rgba(77, 70, 57, 0.6);
+}
+
+.tunerStep {
+  width: 30px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.tunerValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
   font-variant-numeric: tabular-nums;
-  vertical-align: middle;
+}
+
+.tunerNow {
+  padding: 0 12px;
+}
+
+.tunerPlay:disabled,
+.tunerNow:disabled,
+.tunerStep:disabled {
+  opacity: 0.3;
+  cursor: default;
+  transform: none;
+}
+
+/* 발췌 구절: 화면에 없는 절을 읽는 동안 */
+.offTextHint {
+  margin: 0 auto 8px;
+  width: fit-content;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(30, 31, 38, 0.9);
+  border: 1px solid var(--gild);
+  font-size: 12px;
+  color: var(--on-surface-variant);
 }
 
 /* ── Player ── */

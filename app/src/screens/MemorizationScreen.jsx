@@ -1,112 +1,120 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import AudioPlayer from '../components/AudioPlayer.jsx'
 import styles from './MemorizationScreen.module.css'
 
-// localStorage 키
-const tsKey = (id) => `timestamps_${id}`
+// 사용자가 조절한 절 시작 시간 저장 (v2: 자동 계산 타이밍 도입 — 예전 timestamps_* 값은 무시)
+const timingKey = (id) => `timing_v2_${id}`
+const STEP = 0.5 // −/+ 버튼 한 번에 움직이는 초
 
-// 저장된 타임스탬프 불러오기 (없으면 verses 원본값 사용)
-function loadTimestamps(passage) {
+const autoStarts = (passage) => passage.verses.map(v => v.start ?? 0)
+
+function loadStarts(passage) {
   try {
-    const saved = localStorage.getItem(tsKey(passage.id))
-    if (saved) return JSON.parse(saved)
+    const saved = JSON.parse(localStorage.getItem(timingKey(passage.id)))
+    if (Array.isArray(saved) && saved.length === passage.verses.length && saved.every(n => typeof n === 'number')) {
+      return saved
+    }
   } catch {}
-  return passage.verses.map(v => v.timestamp ?? 0)
+  return autoStarts(passage)
 }
 
-// 현재 재생 시간으로 활성 절 인덱스 계산
-function getActiveVerseIndex(currentTime, timestamps) {
-  let active = 0
-  for (let i = 0; i < timestamps.length; i++) {
-    if (timestamps[i] != null && currentTime >= timestamps[i]) {
-      active = i
-    }
-  }
-  return active
+function saveStarts(passage, starts) {
+  try {
+    const isAuto = starts.every((s, i) => s === autoStarts(passage)[i])
+    if (isAuto) localStorage.removeItem(timingKey(passage.id))
+    else localStorage.setItem(timingKey(passage.id), JSON.stringify(starts))
+  } catch {}
+}
+
+// 절 i 의 끝 = 데이터의 end(발췌 구절) 또는 다음 절 시작
+function verseEnd(passage, starts, i) {
+  const end = passage.verses[i].end
+  if (end !== undefined) return end === null ? Infinity : Math.max(end, starts[i] + 0.5)
+  return i + 1 < starts.length ? starts[i + 1] : Infinity
+}
+
+// 현재 시간에 해당하는 절 (없으면 null — 발췌 구절에서 본문에 없는 절을 읽는 중)
+function getActiveIndex(t, passage, starts) {
+  let idx = null
+  for (let i = 0; i < starts.length; i++) if (t >= starts[i] - 0.05) idx = i
+  if (idx != null && t >= verseEnd(passage, starts, idx)) return null
+  return idx
+}
+
+const fmt = (sec) => {
+  const m = Math.floor(sec / 60)
+  const s = (sec % 60).toFixed(1).padStart(4, '0')
+  return `${m}:${s}`
 }
 
 export default function MemorizationScreen({ passage, onBack }) {
+  const [starts, setStarts] = useState(() => loadStarts(passage))
   const [activeIndex, setActiveIndex] = useState(null)
-  const [calibrating, setCalibrating] = useState(false)
-  const [timestamps, setTimestamps] = useState(() => loadTimestamps(passage))
-  const [markedCount, setMarkedCount] = useState(0)
-  const currentTimeRef = useRef(0)
+  const [time, setTime] = useState(0)
+  const [adjusting, setAdjusting] = useState(false)
+  const playerRef = useRef(null)
   const verseRefs = useRef([])
+  const startsRef = useRef(starts)
+  startsRef.current = starts
 
-  // 구절이 바뀌면 타임스탬프 다시 로드
+  const isExcerpt = passage.verses.some(v => v.end !== undefined)
+  // 연속 구절의 첫 절은 항상 음원 처음(0초)부터
+  const firstLocked = !isExcerpt
+  const modified = starts.some((s, i) => s !== autoStarts(passage)[i])
+
   useEffect(() => {
-    setTimestamps(loadTimestamps(passage))
+    setStarts(loadStarts(passage))
     setActiveIndex(null)
-    setCalibrating(false)
-    setMarkedCount(0)
+    setAdjusting(false)
   }, [passage.id])
 
-  // 타이밍 맞추기 모드 시작
-  const startCalibrating = () => {
-    setCalibrating(true)
-    setMarkedCount(0)
-    // 첫 절은 항상 0초
-    const initial = passage.verses.map((_, i) => i === 0 ? 0 : null)
-    setTimestamps(initial)
-  }
-
-  // 캘리브레이션 완료
-  const finishCalibrating = () => {
-    // null 남은 절은 이전 값으로 채우기
-    const filled = [...timestamps]
-    for (let i = 1; i < filled.length; i++) {
-      if (filled[i] == null) filled[i] = filled[i - 1] + 1
-    }
-    setTimestamps(filled)
-    localStorage.setItem(tsKey(passage.id), JSON.stringify(filled))
-    setCalibrating(false)
-    setActiveIndex(null)
-  }
-
-  // 캘리브레이션 취소
-  const cancelCalibrating = () => {
-    setTimestamps(loadTimestamps(passage))
-    setCalibrating(false)
-    setMarkedCount(0)
-  }
-
-  // 절 탭 — 캘리브레이션 모드에서 현재 시간 기록
-  const markVerse = (i) => {
-    if (!calibrating) return
-    // 첫 절은 항상 0
-    if (i === 0) return
-    const t = Math.round(currentTimeRef.current * 10) / 10
-    setTimestamps(prev => {
-      const next = [...prev]
-      next[i] = t
-      return next
-    })
-    setMarkedCount(prev => prev + 1)
-  }
-
-  const handleTimeUpdate = useCallback((time) => {
-    currentTimeRef.current = time
-    if (time === 0) {
-      setActiveIndex(null)
-      return
-    }
-    const ts = timestamps.map(t => t ?? 0)
-    const idx = getActiveVerseIndex(time, ts)
+  const handleTimeUpdate = (t) => {
+    setTime(t)
+    const idx = t === 0 ? null : getActiveIndex(t, passage, startsRef.current)
     setActiveIndex(prev => {
-      if (prev !== idx) {
+      if (idx != null && prev !== idx) {
         const el = verseRefs.current[idx]
         if (el) {
           const rect = el.getBoundingClientRect()
-          if (rect.bottom > window.innerHeight - 180) {
+          if (rect.top < 120 || rect.bottom > window.innerHeight - 200) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         }
       }
       return idx
     })
-  }, [timestamps])
+  }
 
-  const needsMoreMarks = passage.verses.length > 1 && markedCount < passage.verses.length - 1
+  // 타이밍 값 변경 (앞뒤 절 순서가 뒤집히지 않게 제한)
+  const setStart = (i, value) => {
+    setStarts(prev => {
+      const next = [...prev]
+      let v = Math.round(value * 10) / 10
+      if (!isExcerpt) {
+        const lo = i > 0 ? prev[i - 1] + 0.3 : 0
+        const hi = i + 1 < prev.length ? prev[i + 1] - 0.3 : Infinity
+        v = Math.min(Math.max(v, lo), hi)
+      }
+      next[i] = Math.max(0, v)
+      saveStarts(passage, next)
+      return next
+    })
+  }
+
+  const resetAuto = () => {
+    const auto = autoStarts(passage)
+    setStarts(auto)
+    saveStarts(passage, auto)
+  }
+
+  const playVerse = (i) => playerRef.current?.playFrom(Math.max(0, starts[i] - 0.1))
+  const playOnlyVerse = (i) => {
+    const end = verseEnd(passage, starts, i)
+    playerRef.current?.playRange(Math.max(0, starts[i] - 0.1), end === Infinity ? null : end)
+  }
+
+  const verseClass = (i) =>
+    activeIndex === null ? '' : activeIndex === i ? styles.verseActive : styles.verseInactive
 
   return (
     <div className={styles.container}>
@@ -120,40 +128,45 @@ export default function MemorizationScreen({ passage, onBack }) {
           </svg>
         </button>
         <span className={styles.reference}>{passage.reference}</span>
-        {!calibrating ? (
-          <button className={styles.calibrateBtn} onClick={startCalibrating} title="타이밍 맞추기">
-            <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        {!adjusting ? (
+          <button className={styles.adjustBtn} onClick={() => setAdjusting(true)}>
+            <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
+            타이밍
           </button>
         ) : (
-          <button
-            className={`${styles.calibrateBtn} ${styles.calibrateDone}`}
-            onClick={needsMoreMarks ? cancelCalibrating : finishCalibrating}
-          >
-            {needsMoreMarks ? '취소' : '완료'}
+          <button className={`${styles.adjustBtn} ${styles.adjustDone}`} onClick={() => setAdjusting(false)}>
+            완료
           </button>
         )}
       </header>
 
-      {/* 캘리브레이션 안내 배너 */}
-      {calibrating && (
-        <div className={styles.calibrateBanner}>
-          <span>🎵 재생 후, 각 절이 들릴 때 해당 절을 탭하세요</span>
-          <span className={styles.calibrateCount}>
-            {markedCount} / {passage.verses.length - 1} 완료
-          </span>
+      {/* 타이밍 조절 안내 */}
+      {adjusting && (
+        <div className={styles.adjustBanner}>
+          <p className={styles.adjustTitle}>타이밍 조절</p>
+          <p className={styles.adjustDesc}>
+            <b>▶</b>로 한 절씩 들어보고, 글자 색이 늦게 바뀌면 <b>−</b>, 빨리 바뀌면 <b>+</b>를 누르세요.
+            재생 중에 <b>지금</b>을 누르면 그 순간이 절 시작이 돼요.
+          </p>
+          <div className={styles.adjustFoot}>
+            <span className={styles.adjustSaved}>{modified ? '✓ 자동 저장됨' : '자동 계산값 사용 중'}</span>
+            {modified && (
+              <button className={styles.resetBtn} onClick={resetAuto}>자동값으로 되돌리기</button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Content */}
       <main className={styles.content}>
-        {/* Hero — 장절 제목 */}
         <section className={styles.hero}>
           <span className={styles.heroEyebrow}>말씀암송 · {passage.verses.length}절</span>
           <h1 className={styles.heroTitle}>{passage.reference}</h1>
           <p className={styles.heroAr} dir="rtl" lang="ar">{passage.referenceAr}</p>
+          {!adjusting && <p className={styles.heroHint}>구절을 누르면 그 절부터 들려드려요</p>}
         </section>
 
         {/* Korean — 절별 */}
@@ -161,40 +174,50 @@ export default function MemorizationScreen({ passage, onBack }) {
           <span className={styles.langBadge}>한국어</span>
           <div className={styles.verseList}>
             {passage.verses.map((v, i) => {
-              const isMarked = calibrating && timestamps[i] != null
-              const isFirst = i === 0
+              const locked = firstLocked && i === 0
               return (
-                <p
-                  key={`ko-${v.verse}`}
-                  ref={el => verseRefs.current[i] = el}
-                  className={`${styles.koVerse} ${
-                    calibrating
-                      ? isFirst
-                        ? styles.verseCalFirst
-                        : isMarked
-                          ? styles.verseCalMarked
-                          : styles.verseCalPending
-                      : activeIndex === null
-                        ? ''
-                        : activeIndex === i
-                          ? styles.verseActive
-                          : styles.verseInactive
-                  }`}
-                  onClick={() => markVerse(i)}
-                >
-                  <span className={styles.verseNum}>
-                    {calibrating && !isFirst && (
-                      isMarked
-                        ? <span className={styles.checkMark}>✓</span>
-                        : <span className={styles.tapMark}>탭</span>
-                    )}
-                    {(!calibrating || isFirst) && v.verse}
-                  </span>
-                  {v.ko}
-                  {calibrating && timestamps[i] != null && !isFirst && (
-                    <span className={styles.tsLabel}>{timestamps[i]}s</span>
+                <div key={`ko-${v.verse}`} className={adjusting ? styles.verseAdjustWrap : undefined}>
+                  <p
+                    ref={el => verseRefs.current[i] = el}
+                    className={`${styles.koVerse} ${verseClass(i)}`}
+                    onClick={() => !adjusting && playVerse(i)}
+                  >
+                    <span className={styles.verseNum}>{v.verse}</span>
+                    {v.ko}
+                  </p>
+
+                  {adjusting && (
+                    <div className={styles.tuner}>
+                      <button className={styles.tunerPlay} onClick={() => playOnlyVerse(i)} aria-label={`${v.verse}절 듣기`}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5.14v14l11-7-11-7z" /></svg>
+                        듣기
+                      </button>
+                      <div className={styles.tunerTime}>
+                        <button
+                          className={styles.tunerStep}
+                          onClick={() => setStart(i, starts[i] - STEP)}
+                          disabled={locked}
+                          aria-label="0.5초 앞당기기"
+                        >−</button>
+                        <span className={styles.tunerValue}>{locked ? '처음' : fmt(starts[i])}</span>
+                        <button
+                          className={styles.tunerStep}
+                          onClick={() => setStart(i, starts[i] + STEP)}
+                          disabled={locked}
+                          aria-label="0.5초 늦추기"
+                        >+</button>
+                      </div>
+                      <button
+                        className={styles.tunerNow}
+                        onClick={() => setStart(i, playerRef.current?.getCurrentTime() ?? time)}
+                        disabled={locked || time === 0}
+                        title="현재 재생 위치를 이 절의 시작으로"
+                      >
+                        지금
+                      </button>
+                    </div>
                   )}
-                </p>
+                </div>
               )
             })}
           </div>
@@ -212,15 +235,8 @@ export default function MemorizationScreen({ passage, onBack }) {
             {passage.verses.map((v, i) => (
               <p
                 key={`ar-${v.verse}`}
-                className={`${styles.arVerse} ${
-                  calibrating
-                    ? ''
-                    : activeIndex === null
-                      ? ''
-                      : activeIndex === i
-                        ? styles.verseActive
-                        : styles.verseInactive
-                }`}
+                className={`${styles.arVerse} ${verseClass(i)}`}
+                onClick={() => !adjusting && playVerse(i)}
               >
                 {v.ar}
                 <span className={styles.verseNumAr}>{v.verse}</span>
@@ -232,7 +248,10 @@ export default function MemorizationScreen({ passage, onBack }) {
 
       {/* Audio Player */}
       <footer className={styles.playerWrap}>
-        <AudioPlayer audioFile={passage.audioFile} onTimeUpdate={handleTimeUpdate} />
+        {isExcerpt && time > 0 && activeIndex === null && (
+          <p className={styles.offTextHint}>♪ 지금은 화면에 없는 절을 읽고 있어요</p>
+        )}
+        <AudioPlayer ref={playerRef} audioFile={passage.audioFile} onTimeUpdate={handleTimeUpdate} />
       </footer>
     </div>
   )
