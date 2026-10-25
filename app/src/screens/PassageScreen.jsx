@@ -280,6 +280,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
 
   const verses = passage.verses
   const multiVerse = verses.length > 1
+  const hasPron = verses.some(v => v.pron) // 네비게이토 자료에는 발음 칸이 없음
   const shownRange = range || (duration ? { start: 0, end: duration } : null)
 
   return (
@@ -326,9 +327,10 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
 
       <main className={styles.content}>
         <section className={styles.hero}>
-          <span className={styles.eyebrow}>{passage.stageName} · {verses.length}절</span>
+          <span className={styles.eyebrow}>{passage.stageName} · {passage.group || `${verses.length}절`}</span>
           <h1 className={styles.title}>{passage.ref}</h1>
           {passage.refAr && <p className={styles.titleAr} dir="rtl" lang="ar">{passage.refAr}</p>}
+          {passage.topic && <p className={styles.topic}>{passage.topic}</p>}
           {hasAudio && (
             <p className={styles.hint}>
               {!times
@@ -440,7 +442,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
           </summary>
           <div className={styles.moreBody}>
             <Segmented label="한국어 뜻" options={ONOFF} value={settings.showKo} onChange={v => changeSetting('showKo', v)} />
-            <Segmented label="발음" options={ONOFF} value={settings.showPron} onChange={v => changeSetting('showPron', v)} />
+            {hasPron && <Segmented label="발음" options={ONOFF} value={settings.showPron} onChange={v => changeSetting('showPron', v)} />}
             <Segmented
               label="단어 가리기"
               options={MASK_LEVELS.map((m, i) => ({ value: i, label: m.label }))}

@@ -239,7 +239,7 @@ export default function ContinuousScreen({ stage, stageName, passages, onBack, o
 
       <main className={ps.content}>
         <section className={ps.hero}>
-          <span className={ps.eyebrow}>{stageName} · {String(passage.no).padStart(2, '0')}번 · {passage.verses.length}절</span>
+          <span className={ps.eyebrow}>{stageName} · {String(passage.no).padStart(2, '0')}번 · {passage.group || `${passage.verses.length}절`}</span>
           <h1 className={ps.title}>{passage.ref}</h1>
           {passage.refAr && <p className={ps.titleAr} dir="rtl" lang="ar">{passage.refAr}</p>}
           <button className={styles.openLink} onClick={() => { stopAll(); onOpen(passage.id) }}>

@@ -194,7 +194,7 @@ function rateSpread(words, times) {
 
 export function alignAuto(words, segs) {
   let best = null
-  for (let k = 0; k <= 2 && k < segs.length - 1; k++) {
+  for (let k = 0; k <= 2 && (k === 0 || k < segs.length - 1); k++) { // 쉼이 없는 짧은 녹음도 k=0 은 시도
     if (k > 0 && segs[k - 1][1] > MAX_INTRO) break
     const times = alignWords(words, segs.slice(k))
     if (!times) continue

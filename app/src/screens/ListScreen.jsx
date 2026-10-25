@@ -104,10 +104,13 @@ export default function ListScreen({ data, all, done, onOpen, onContinuous, onIn
         </button>
 
         <ol className={styles.list}>
-          {current.passages.map(p => {
+          {current.passages.map((p, i) => {
             const isDone = !!done[p.id]
+            // 주제가 있는 단계(네비게이토)는 주제가 바뀔 때마다 제목을 단다
+            const groupHead = p.group && p.group !== current.passages[i - 1]?.group
             return (
               <li key={p.id}>
+                {groupHead && <h2 className={styles.groupHead}>{p.group}</h2>}
                 <button className={`${styles.item} ${isDone ? styles.itemDone : ''}`} onClick={() => onOpen(p.id)}>
                   <span className={styles.no}>{String(p.no).padStart(2, '0')}</span>
                   <span className={styles.body}>
@@ -117,7 +120,7 @@ export default function ListScreen({ data, all, done, onOpen, onContinuous, onIn
                     </span>
                     <span className={styles.preview}>{p.verses[0].ko}</span>
                     <span className={styles.meta}>
-                      {p.verses.length}절
+                      {p.topic ? p.topic : `${p.verses.length}절`}
                       {!p.audio && <span className={styles.noAudio}> · 녹음 없음</span>}
                     </span>
                   </span>

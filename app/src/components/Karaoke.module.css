@@ -36,7 +36,8 @@
   position: absolute;
   left: 4px;
   top: 12px;
-  width: 36px;
+  min-width: 36px;
+  padding: 0 4px;
   height: 36px;
   border-radius: 10px;
   font-family: var(--font-sans);

@@ -366,3 +366,16 @@
   font-size: 13px;
   color: var(--outline);
 }
+
+/* 주제 제목 (네비게이토) */
+.groupHead {
+  margin: 14px 2px 8px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+li:first-child > .groupHead {
+  margin-top: 2px;
+}
