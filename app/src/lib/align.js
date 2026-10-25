@@ -192,9 +192,11 @@ function rateSpread(words, times) {
   return rates.reduce((a, r, i) => a + (i === 0 ? 2 : 1) * Math.log(r / med) ** 2, 0) / rates.length
 }
 
-export function alignAuto(words, segs) {
+// opts.intro = false 면 제목 감지를 하지 않음 (짧은 표현이 많은 기도문: 첫 표현 "아민"을 제목으로 오인할 수 있음)
+export function alignAuto(words, segs, opts = {}) {
+  const maxK = opts.intro === false ? 0 : 2
   let best = null
-  for (let k = 0; k <= 2 && (k === 0 || k < segs.length - 1); k++) { // 쉼이 없는 짧은 녹음도 k=0 은 시도
+  for (let k = 0; k <= maxK && (k === 0 || k < segs.length - 1); k++) { // 쉼이 없는 짧은 녹음도 k=0 은 시도
     if (k > 0 && segs[k - 1][1] > MAX_INTRO) break
     const times = alignWords(words, segs.slice(k))
     if (!times) continue

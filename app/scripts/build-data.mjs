@@ -13,6 +13,11 @@
 //       3행부터 A 번호 B 분류 C 장절 "요한복음 1:1,14 (يوحنا 1: 1، 14)" D 한국어(개역한글) E 아랍어(모음 부호 포함)
 //     mp3: 주제 폴더("1. 하나님을 알아감/") 안에 "갈라디아서 4장 6절.mp3", "에베소서 6장 10절에서 11절.mp3"
 //     → 녹음이 있는 항목만 앱에 넣는다 (녹음을 추가하고 다시 돌리면 자동으로 늘어남)
+//   [단계 3] 이집트 암미에 기도문/
+//     엑셀: 자료 정리/*.xlsx (1부, 2부 — "리스트" 파일은 제외). 시트 하나 = 단원 ("2-1. 감사를 표현할때")
+//       4행부터 A 한국어 의미 B 이집트 구어체 아랍어 C 한글 발음
+//     mp3: 이집트 암미에 기도문 음성 파일/ "2-1. 감사를 표현할때(9번 표현이 없음).mp3" — 앞 번호로 시트와 짝
+//     → 음원 하나 = 단원 하나, 표현 한 줄 = 절 하나 (화면에는 "표현"으로 표시)
 //
 // 절 시작 시간(start)을 손으로 고정하고 싶으면 passages.json 에서 그 절에 "startFixed": true 를 넣는다.
 // 다음에 이 스크립트를 다시 돌려도 그 값은 바뀌지 않는다.
@@ -27,6 +32,8 @@ const APP = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILES = path.join(APP, '..', 'files')
 const DA_DIR = path.join(FILES, 'DA 1단계 암송구절(아랍어) 음원')
 const NAV_DIR = path.join(FILES, '네비 게이토 성경 암송 구절(아랍어) 음원')
+const PRAYER_XLSX_DIR = path.join(FILES, '이집트 암미에 기도문', '자료 정리')
+const PRAYER_AUDIO_DIR = path.join(FILES, '이집트 암미에 기도문', '이집트 암미에 기도문 음성 파일')
 const OUT_JSON = path.join(APP, 'public', 'data', 'passages.json')
 const OUT_AUDIO = path.join(APP, 'public', 'audio')
 
@@ -213,7 +220,93 @@ function buildNav() {
   return { stage: 2, name: '네비게이토', passages }
 }
 
-const stages = [buildDA(), buildNav()]
+// ── 단계 3: 이집트 암미야(구어체) 기도문 ──
+// 음원 하나 = 단원 하나. 음원 이름의 번호("2-1", "7-1-1")와 같은 번호의 시트(들)를 찾아 표현을 이어 붙인다.
+// ("1. 기도에 대한 호칭-1,2.mp3" 처럼 두 시트를 한 번에 녹음한 파일은 -1, -2 시트를 차례로)
+function buildPrayer() {
+  const xlsxFiles = fs.readdirSync(PRAYER_XLSX_DIR).filter(f => f.endsWith('.xlsx') && !f.startsWith('~$') && !f.includes('리스트')).sort()
+  const sheets = xlsxFiles.flatMap(f => {
+    console.log('엑셀:', path.relative(FILES, path.join(PRAYER_XLSX_DIR, f)))
+    return readXlsx(path.join(PRAYER_XLSX_DIR, f))
+  })
+  const codeOf = (name) => /^([\d-]+?)\.?\s/.exec(name.trim())?.[1]
+  const titleOf = (name) => name.trim().replace(/^[\d-]+\.?\s*/, '').replace(/\s*-\d$/, '').trim()
+  // 아랍어 정리: 구어체 표시 "(ع)" 빼기, 따로 떨어진 문장부호·빗금은 앞 단어에 붙이기
+  const cleanAr = (s) => s.replace(/\(ع\)\s*/g, '').replace(/\s+([!?؟.,،:؛/])/g, '$1').replace(/\s+/g, ' ').trim()
+
+  const audioFiles = fs.readdirSync(PRAYER_AUDIO_DIR).filter(f => f.endsWith('.mp3'))
+    .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }))
+  const groups = new Map() // 장 번호 → 장 제목
+
+  const passages = audioFiles.map(file => {
+    const code = /^([\d-]+)\./.exec(file)?.[1]
+    const own = sheets.filter(s => codeOf(s.name) === code)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }))
+    if (!own.length) { warnings.push(`기도문 음원 "${file}": 같은 번호의 시트가 없어요`); return null }
+
+    // 파일 이름 메모: "(9번 표현이 없음)" → 그 표현은 녹음에 없음
+    const missing = new Set([.../(\d+)번 표현이 없음/g.exec(file) ? [+/(\d+)번 표현이 없음/.exec(file)[1]] : []])
+    const verses = own.flatMap(s => s.rows.filter(r => r.r >= 4 && r.B))
+      .map((r, i) => {
+        const v = { n: i + 1, ko: r.A || '', ar: cleanAr(r.B), pron: r.C || '' }
+        if (missing.has(i + 1)) v.noAudio = true
+        return v
+      })
+    if (missing.size) warnings.push(`기도문 "${file}": ${[...missing].join(',')}번 표현은 녹음에 없음으로 표시`)
+
+    const major = code.split('-')[0]
+    const title = titleOf(own[0].name)
+    if (!groups.has(major) || code === major) groups.set(major, `${major}. ${title}`)
+    const id = `pray_${code}`
+    keepFixed(id, verses)
+    return {
+      id,
+      unit: '표현',
+      major,
+      ref: `${code}. ${title}`,
+      audio: copyAudio(path.join(PRAYER_AUDIO_DIR, file), id),
+      verses,
+    }
+  }).filter(Boolean)
+
+  passages.forEach((p, i) => {
+    p.no = i + 1
+    p.group = groups.get(p.major)
+    delete p.major
+  })
+  console.log(`  기도문: 단원 ${passages.length}개, 표현 ${passages.reduce((a, p) => a + p.verses.length, 0)}개`)
+  return { stage: 3, name: '암미야 기도문', passages }
+}
+
+// 녹음과 글이 맞는지 판정 (기도문용)
+//  - 발화 속도가 3~7 음절/초 밖이면 → 반복해서 읽었거나(느림) 일부를 건너뜀(빠름)
+//  - 0.9초 넘는 쉼으로 나눈 말소리 묶음이 표현 수보다 적으면 → 빠진 표현이 있음
+//  - 맞춘 결과에서 다른 표현보다 1.5배 넘게 빠르거나 느린 표현이 30% 넘으면 → 경계가 엉킴
+function timingQuality(verses, words, segs, times) {
+  const groups = []
+  for (const [a, b] of segs) {
+    const g = groups[groups.length - 1]
+    if (g && a - g.end < 0.9) { g.end = b; g.speech += b - a } else groups.push({ end: b, speech: b - a })
+  }
+  const G = groups.filter(g => g.speech >= 0.25).length
+  const N = verses.filter(v => !v.noAudio).length
+  const speech = segs.reduce((acc, [a, b]) => acc + b - a, 0)
+  const rate = words.reduce((acc, w) => acc + w.syl, 0) / speech
+  const rates = verses.map((v, vi) => {
+    if (v.noAudio) return null
+    const idx = words.map((_, i) => i).filter(i => words[i].verseIndex === vi)
+    return (times[idx[idx.length - 1]].end - times[idx[0]].start) / idx.reduce((acc, i) => acc + words[i].syl, 0)
+  }).filter(Boolean)
+  const med = [...rates].sort((a, b) => a - b)[rates.length >> 1]
+  const odd = rates.filter(r => r / med > 1.5 || med / r > 1.5).length / rates.length
+  if (rate < 3) return { ok: false, why: `느림 ${rate.toFixed(1)}음절/초 — 반복 낭독으로 보임` }
+  if (rate > 7) return { ok: false, why: `빠름 ${rate.toFixed(1)}음절/초 — 빠진 표현이 있어 보임` }
+  if (G < N - Math.max(1, Math.round(N * 0.15))) return { ok: false, why: `말소리 묶음 ${G}개 < 표현 ${N}개` }
+  if (odd > 0.3) return { ok: false, why: `표현 경계가 고르지 않음 (${Math.round(odd * 100)}%)` }
+  return { ok: true }
+}
+
+const stages = [buildDA(), buildNav(), buildPrayer()]
 const all = stages.flatMap(s => s.passages)
 
 // ── 절 타이밍 자동 계산 (녹음의 쉼 + 발음 길이 맞추기, 앱과 같은 align.js) ──
@@ -228,7 +321,7 @@ if (!noAlign) {
     const samples = channelData[0]
     const words = tokenize(p.verses)
     const segs = detectSpeech(samples, sampleRate)
-    const auto = alignAuto(words, segs)
+    const auto = alignAuto(words, segs, { intro: p.unit !== '표현' })
     const duration = samples.length / sampleRate
     p.duration = Math.round(duration * 10) / 10
     if (!auto) { warnings.push(`${p.ref}: 자동 맞추기 실패`); continue }
@@ -238,7 +331,17 @@ if (!noAlign) {
       if (v.startFixed) return
       v.start = vi === 0 && !auto.introEnd ? 0 : Math.max(0, Math.round((starts[vi] - 0.12) * 10) / 10)
     })
-    console.log(`  ${p.ref.padEnd(16)} ${duration.toFixed(1)}s  ${auto.introEnd ? `제목 ~${auto.introEnd.toFixed(1)}s  ` : ''}절 시작: ${p.verses.map(v => `${v.n}:${v.start}${v.startFixed ? '*' : ''}`).join(' ')}`)
+    // 기도문 녹음은 표현을 반복해 읽거나 일부를 건너뛴 단원이 있다 → 자동 색칠을 믿을 수 있는지 판정
+    let note = ''
+    if (p.unit === '표현' && !p.verses.some(v => v.startFixed)) {
+      const q = timingQuality(p.verses, words, segs, auto.times)
+      if (!q.ok) {
+        p.autoTiming = false
+        p.verses.forEach(v => { delete v.start })
+        note = `  ⚠ 자동 색칠 끔 (${q.why})`
+      }
+    }
+    console.log(`  ${p.ref.padEnd(16)} ${duration.toFixed(1)}s  ${auto.introEnd ? `제목 ~${auto.introEnd.toFixed(1)}s  ` : ''}${note || `절 시작: ${p.verses.map(v => `${v.n}:${v.start}${v.startFixed ? '*' : ''}`).join(' ')}`}`)
   }
 } else {
   // 타이밍 계산을 건너뛰면 이전 값 유지
@@ -251,8 +354,8 @@ if (!noAlign) {
 }
 
 const out = {
-  title: '아랍어 성경 암송',
-  translation: '한국어 개역개정(DA)·개역한글(네비게이토) · 아랍어 Van Dyck · 엑셀에서 옮김, 오타 가능',
+  title: '아랍어 성경 암송 · 기도문',
+  translation: '한국어 개역개정(DA)·개역한글(네비게이토) · 아랍어 Van Dyck · 기도문은 이집트 구어체(암미야) · 엑셀에서 옮김, 오타 가능',
   stages,
 }
 fs.mkdirSync(path.dirname(OUT_JSON), { recursive: true })

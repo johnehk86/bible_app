@@ -11,7 +11,7 @@ import styles from './Karaoke.module.css'
 
 const LEAD = 0.04 // 소리보다 아주 살짝 먼저 칠해야 눈에는 딱 맞게 보임
 
-function Karaoke({ verses, words, times, looper, range, masked, showKo = true, showPron = true, onWordTap, onVerseTap }) {
+function Karaoke({ verses, words, times, looper, range, masked, showKo = true, showPron = true, unit = '절', onWordTap, onVerseTap }) {
   // onVerseTap 이 없으면 절 번호는 누를 수 없는 그냥 숫자 (연속듣기 화면)
   const spansRef = useRef([])
   const versesRef = useRef([])
@@ -121,8 +121,8 @@ function Karaoke({ verses, words, times, looper, range, masked, showKo = true, s
                 type="button"
                 className={styles.num}
                 onClick={(e) => { e.stopPropagation(); onVerseTap(vi) }}
-                aria-label={`${v.n}절만 반복`}
-                disabled={!times}
+                aria-label={`${v.n}번 ${unit}만 반복`}
+                disabled={!times || v.noAudio}
               >
                 {v.n}
               </button>
@@ -130,6 +130,7 @@ function Karaoke({ verses, words, times, looper, range, masked, showKo = true, s
               <span className={`${styles.num} ${styles.numStatic}`}>{v.n}</span>
             )}
             <p className={styles.ar} dir="rtl" lang="ar">{items}</p>
+            {v.noAudio && <p className={styles.noAudio}>녹음에 없는 {unit}이에요</p>}
             {showPron && v.pron && <p className={styles.pron} lang="ko">{v.pron}</p>}
             {showKo && v.ko && <p className={styles.ko} lang="ko">{v.ko}</p>}
           </div>

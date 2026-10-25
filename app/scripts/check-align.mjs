@@ -24,7 +24,7 @@ for (const p of all) {
   const samples = channelData[0]
   const words = tokenize(p.verses)
   const segs = detectSpeech(samples, sampleRate)
-  const auto = alignAuto(words, segs)
+  const auto = alignAuto(words, segs, { intro: p.unit !== '표현' })
   const times = auto?.times
   if (!times) { console.log(p.id, '정렬 실패'); continue }
 

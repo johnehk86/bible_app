@@ -38,9 +38,12 @@ export function readXlsx(file) {
   const txt = (n) => z[n]?.toString('utf8') ?? ''
   const shared = [...txt('xl/sharedStrings.xml').matchAll(/<si>([\s\S]*?)<\/si>/g)]
     .map(m => xmlDecode([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(t => t[1]).join('')))
-  const rels = Object.fromEntries([...txt('xl/_rels/workbook.xml.rels').matchAll(/<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)].map(m => [m[1], m[2]]))
-  const sheets = [...txt('xl/workbook.xml').matchAll(/<sheet [^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g)]
-    .map(m => ({ name: xmlDecode(m[1]), path: 'xl/' + rels[m[2]].replace(/^\/?xl\//, '') }))
+  // 속성 순서는 프로그램마다 다르므로 태그를 먼저 찾고 속성을 따로 읽는다
+  const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1]
+  const rels = Object.fromEntries([...txt('xl/_rels/workbook.xml.rels').matchAll(/<Relationship\b[^>]*>/g)]
+    .map(m => [attr(m[0], 'Id'), attr(m[0], 'Target')]))
+  const sheets = [...txt('xl/workbook.xml').matchAll(/<sheet\b[^>]*>/g)]
+    .map(m => ({ name: xmlDecode(attr(m[0], 'name')), path: 'xl/' + rels[attr(m[0], 'r:id')].replace(/^\/?xl\//, '') }))
   return sheets.map(s => {
     const rows = []
     for (const row of txt(s.path).matchAll(/<row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {

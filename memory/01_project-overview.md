@@ -17,7 +17,8 @@
 260_Bible_App_Project/
 ├─ files/DA 1단계 암송구절(아랍어) 음원/   ← 원본 단계 1 (엑셀 + mp3 13개). git 제외
 ├─ files/네비 게이토 성경 암송 구절(아랍어) 음원/ ← 원본 단계 2 (엑셀 229항목 + 주제 폴더 7개 mp3 28개). git 제외
-├─ data/                                    ← 사용자가 둔 다른 자료(이집트 암미에 기도문 105MB 등). git 제외, 아직 미사용
+├─ files/이집트 암미에 기도문/            ← 원본 단계 3 (엑셀 1·2부 + mp3 29개 + 교재 사진). git 제외
+├─ data/                                    ← 사용자가 처음 둔 압축 자료(같은 내용). git 제외, 미사용
 ├─ memory/                                  ← 이 문서들
 └─ app/                                     ← 앱 (README.md 에 사용법·데이터 수정법 상세)
    ├─ public/data/passages.json   본문 (npm run data 로 생성)
@@ -48,3 +49,4 @@ npm run check-align    # 타이밍 점검
 - [05_ui-design.md](05_ui-design.md) — 디자인 토큰 (어두운/밝은 테마)
 - [06_issues-and-roadmap.md](06_issues-and-roadmap.md) — 이슈, 데이터 오타, 할 일
 - [07_pwa-install.md](07_pwa-install.md) — 앱 설치(PWA), 서비스 워커
+- [08_prayer.md](08_prayer.md) — 이집트 암미야 기도문 (단계 3), 자동 색칠 판정

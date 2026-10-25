@@ -120,8 +120,9 @@ export default function ListScreen({ data, all, done, onOpen, onContinuous, onIn
                     </span>
                     <span className={styles.preview}>{p.verses[0].ko}</span>
                     <span className={styles.meta}>
-                      {p.topic ? p.topic : `${p.verses.length}절`}
+                      {p.topic ? p.topic : p.unit === '표현' ? `표현 ${p.verses.length}개` : `${p.verses.length}절`}
                       {!p.audio && <span className={styles.noAudio}> · 녹음 없음</span>}
+                      {p.autoTiming === false ? <span className={styles.noAudio}> · 색칠은 직접 맞추기</span> : null}
                     </span>
                   </span>
                   {isDone ? (

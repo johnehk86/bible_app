@@ -77,17 +77,20 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
     if (!hasAudio) return
     let alive = true
     analyze(passage.audio)
-      .then(a => { if (alive) setAnalysis({ ...a, auto: autoWordTimes(words, a) }) })
+      .then(a => { if (alive) setAnalysis({ ...a, auto: autoWordTimes(words, a, { intro: passage.unit !== '표현' }) }) })
       .catch(() => { if (alive) setAnalysis({ error: true }) })
     return () => { alive = false }
   }, [passage.audio, hasAudio, words])
 
+  // autoTiming === false: 녹음과 글이 딱 맞지 않는 단원(기도문 일부) → 직접 맞추기 전에는 색칠하지 않음
+  const manualOnly = passage.autoTiming === false && !marks
   const times = useMemo(() => {
+    if (manualOnly) return null
     const starts = marks || dataStarts
     if (analysis?.auto) return applyMarks(words, analysis.auto, starts, analysis.duration)
     if (starts) return timesFromStarts(words, starts, passage.duration)
     return null
-  }, [analysis, marks, dataStarts, words, passage.duration])
+  }, [analysis, marks, dataStarts, words, passage.duration, manualOnly])
   const verseStarts = useMemo(() => (times ? verseStartsOf(words, times, passage.verses.length) : null), [times, words, passage])
   const duration = snap.duration || analysis?.duration || passage.duration || 0
 
@@ -152,7 +155,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
     }
     commitRange(r)
     looper.playFrom(r.start)
-    showToast(`${passage.verses[vi].n}절만 반복해요`)
+    showToast(`${passage.verses[vi].n}번 ${passage.unit || '절'}만 반복해요`)
   }, [times, looper, verseRange, range, commitRange, passage, showToast])
 
   // 단어 누르기: 거기서부터 재생
@@ -217,7 +220,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
     if (finalMarks) {
       setMarks(finalMarks)
       save(KEYS.marks(passage.id), finalMarks)
-      showToast('절 타이밍을 저장했어요')
+      showToast(`${passage.unit || '절'} 타이밍을 저장했어요`)
     }
   }
   const tapMark = () => {
@@ -281,6 +284,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
   const verses = passage.verses
   const multiVerse = verses.length > 1
   const hasPron = verses.some(v => v.pron) // 네비게이토 자료에는 발음 칸이 없음
+  const unit = passage.unit || '절' // 기도문은 '표현'
   const shownRange = range || (duration ? { start: 0, end: duration } : null)
 
   return (
@@ -310,12 +314,12 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
       {/* 타이밍 맞추기 안내 */}
       {marking && (
         <div className={styles.markBanner} role="region" aria-label="타이밍 맞추기">
-          <p className={styles.markTitle}>절 타이밍 맞추기</p>
+          <p className={styles.markTitle}>{unit} 타이밍 맞추기</p>
           <p className={styles.markDesc}>
-            녹음을 들으며 <b>새 절이 시작되는 순간</b> 아래 버튼을 누르세요. 조금 늦게 눌러도 가까운 말소리 시작점에 맞춰져요.
+            녹음을 들으며 <b>새 {unit}이 시작되는 순간</b> 아래 버튼을 누르세요. 조금 늦게 눌러도 가까운 말소리 시작점에 맞춰져요.
           </p>
           <button className={styles.markTap} onClick={tapMark}>
-            {verses[marking.marks.length].n}절 시작
+            {verses[marking.marks.length].n}번 {unit} 시작
             <span className={styles.markCount}>{marking.marks.length} / {verses.length}</span>
           </button>
           <div className={styles.markFoot}>
@@ -327,20 +331,36 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
 
       <main className={styles.content}>
         <section className={styles.hero}>
-          <span className={styles.eyebrow}>{passage.stageName} · {passage.group || `${verses.length}절`}</span>
+          <span className={styles.eyebrow}>{passage.stageName} · {passage.group || `${verses.length}${unit}`}</span>
           <h1 className={styles.title}>{passage.ref}</h1>
           {passage.refAr && <p className={styles.titleAr} dir="rtl" lang="ar">{passage.refAr}</p>}
           {passage.topic && <p className={styles.topic}>{passage.topic}</p>}
           {hasAudio && (
             <p className={styles.hint}>
-              {!times
+              {manualOnly
+                ? '이 단원은 녹음과 글이 딱 맞지 않아 글자 색칠을 쉬어요'
+                : !times
                 ? (analysis?.error ? '녹음을 분석하지 못해 글자 색칠은 쉬어요' : '녹음에 맞춰 글자를 준비하는 중…')
                 : multiVerse
-                  ? '아랍어 단어를 누르면 거기서부터, 절 번호를 누르면 그 절만 반복해요'
+                  ? `아랍어 단어를 누르면 거기서부터, ${unit} 번호를 누르면 그 ${unit}만 반복해요`
                   : '아랍어 단어를 누르면 거기서부터 들려드려요'}
             </p>
           )}
         </section>
+
+        {hasAudio && manualOnly && !marking && (
+          <section className={`${styles.card} ${styles.notice}`}>
+            <p className={styles.noticeTitle}>글자 색칠을 직접 맞춰 주세요</p>
+            <p className={styles.noticeDesc}>
+              이 녹음은 표현을 반복해 읽거나 일부를 건너뛰어서 자동으로 맞추지 못했어요.
+              재생·구간 반복은 그대로 쓸 수 있고, 아래 버튼으로 {unit}이 시작될 때마다 눌러 주면
+              그때부터 색칠과 {unit}별 반복이 돼요. (이 기기에 저장)
+            </p>
+            <button className={styles.outlineBtn} onClick={startMarking} disabled={!analysis?.segs} style={{ marginTop: 12 }}>
+              {analysis?.segs ? '타이밍 맞추기' : '녹음 준비 중…'}
+            </button>
+          </section>
+        )}
 
         <section className={styles.card} aria-label="본문">
           <Karaoke
@@ -352,6 +372,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
             masked={masked}
             showKo={settings.showKo}
             showPron={settings.showPron}
+            unit={unit}
             onWordTap={onWordTap}
             onVerseTap={onVerseTap}
           />
@@ -381,25 +402,25 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
 
               {verseStarts && multiVerse && (
                 <div className={styles.versePick}>
-                  <span className={styles.pickLabel}>절로 고르기</span>
+                  <span className={styles.pickLabel}>{unit === '절' ? '절로 고르기' : '번호로 고르기'}</span>
                   <select
                     className={styles.select}
                     value={selected.a}
                     onChange={e => pickVerses(e.target.value, selected.b)}
-                    aria-label="시작 절"
+                    aria-label={`시작 ${unit}`}
                   >
                     {selected.a === '' && <option value="">—</option>}
-                    {verses.map((v, i) => <option key={v.n} value={i}>{v.n}절</option>)}
+                    {verses.map((v, i) => <option key={v.n} value={i}>{unit === '절' ? `${v.n}절` : `${v.n}번`}</option>)}
                   </select>
                   <span className={styles.pickTilde}>~</span>
                   <select
                     className={styles.select}
                     value={selected.b}
                     onChange={e => pickVerses(selected.a, e.target.value)}
-                    aria-label="끝 절"
+                    aria-label={`끝 ${unit}`}
                   >
                     {selected.b === '' && <option value="">—</option>}
-                    {verses.map((v, i) => <option key={v.n} value={i}>{v.n}절</option>)}
+                    {verses.map((v, i) => <option key={v.n} value={i}>{unit === '절' ? `${v.n}절` : `${v.n}번`}</option>)}
                   </select>
                 </div>
               )}
@@ -456,7 +477,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
                 <div>
                   <p className={styles.timingTitle}>글자 색칠 타이밍</p>
                   <p className={styles.timingDesc}>
-                    {marks ? '직접 맞춘 절 타이밍을 쓰는 중' : '녹음을 분석해 자동으로 맞춘 타이밍'}
+                    {marks ? `직접 맞춘 ${unit} 타이밍을 쓰는 중` : '녹음을 분석해 자동으로 맞춘 타이밍'}
                     {marks && <> · <button className={styles.linkBtn} onClick={resetMarks}>자동으로 되돌리기</button></>}
                   </p>
                 </div>

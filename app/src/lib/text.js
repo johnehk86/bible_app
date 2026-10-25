@@ -48,14 +48,15 @@ export function tokenize(verses) {
 
     ar.forEach((text, k) => {
       let syl
-      if (sameCount) syl = pronSyl[k]
+      if (v.noAudio) syl = 0.05 // 녹음에서 빠진 줄: 시간을 거의 주지 않음 (색칠되지 않음)
+      else if (sameCount) syl = pronSyl[k]
       else if (verseSyl > 0) syl = (verseSyl * letters[k]) / totalLetters
       else if (vowelled) syl = harakat[k] // 발음은 없지만 모음 부호가 있으면 그 수로
       else syl = letters[k] / 1.6 // 둘 다 없으면 글자 수로 근사
       words.push({
         text,
         verseIndex: vi,
-        syl: Math.max(0.5, syl),
+        syl: v.noAudio ? syl : Math.max(0.5, syl),
         verseEnd: k === ar.length - 1,
         punct: PUNCT_END.test(text),
       })

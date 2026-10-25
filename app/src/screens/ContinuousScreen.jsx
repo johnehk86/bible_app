@@ -115,10 +115,12 @@ export default function ContinuousScreen({ stage, stageName, passages, onBack, o
       ? marks
       : dataStarts.every(Number.isFinite) ? dataStarts : null
     setAnalysis(starts ? { times: timesFromStarts(words, starts, passage.duration) } : null)
+    // 자동 색칠을 끈 단원(기도문 일부)은 직접 맞춘 값이 없으면 색칠하지 않음
+    if (!starts && passage.autoTiming === false) return () => { alive = false }
     analyze(passage.audio)
       .then(a => {
         if (!alive) return
-        const auto = autoWordTimes(words, a)
+        const auto = autoWordTimes(words, a, { intro: passage.unit !== '표현' })
         setAnalysis({ times: applyMarks(words, auto, starts, a.duration) })
       })
       .catch(() => { if (alive) setAnalysis({ error: true }) })
@@ -239,7 +241,7 @@ export default function ContinuousScreen({ stage, stageName, passages, onBack, o
 
       <main className={ps.content}>
         <section className={ps.hero}>
-          <span className={ps.eyebrow}>{stageName} · {String(passage.no).padStart(2, '0')}번 · {passage.group || `${passage.verses.length}절`}</span>
+          <span className={ps.eyebrow}>{stageName} · {String(passage.no).padStart(2, '0')}번 · {passage.group || `${passage.verses.length}${passage.unit || '절'}`}</span>
           <h1 className={ps.title}>{passage.ref}</h1>
           {passage.refAr && <p className={ps.titleAr} dir="rtl" lang="ar">{passage.refAr}</p>}
           <button className={styles.openLink} onClick={() => { stopAll(); onOpen(passage.id) }}>
@@ -256,6 +258,7 @@ export default function ContinuousScreen({ stage, stageName, passages, onBack, o
             looper={looper}
             range={null}
             masked={EMPTY}
+            unit={passage.unit || '절'}
             showKo={view.showKo}
             showPron={view.showPron}
             onWordTap={(i) => analysis?.times && looper?.playFrom(Math.max(0, analysis.times[i].start - 0.08))}

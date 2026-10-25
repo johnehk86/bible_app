@@ -33,8 +33,9 @@ export async function analyze(url) {
   return result
 }
 
-export function autoWordTimes(words, analysis) {
-  return alignAuto(words, analysis.segs)?.times || proportionalWords(words, analysis.duration)
+// opts: alignAuto 옵션 (기도문은 { intro: false })
+export function autoWordTimes(words, analysis, opts) {
+  return alignAuto(words, analysis.segs, opts)?.times || proportionalWords(words, analysis.duration)
 }
 
 // 절 시작 시각 (자동 맞추기 결과에서)

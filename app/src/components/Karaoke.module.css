@@ -145,3 +145,14 @@
   -webkit-box-decoration-break: clone;
   text-shadow: none;
 }
+
+/* 녹음에서 빠진 줄 (기도문 2-1 의 9번 등) */
+.noAudio {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--outline);
+}
+
+.noAudio::before {
+  content: '♪̸ ';
+}
