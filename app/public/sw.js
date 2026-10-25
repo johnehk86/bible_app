@@ -1,6 +1,7 @@
-// 말씀암송 서비스 워커 — 오프라인 지원
+// 말씀암송 서비스 워커 — 오프라인 지원 (한 번 열어 본 구절은 비행기 모드에서도 재생)
 // 캐시 구조를 바꾸면 버전을 올릴 것 (이전 캐시는 activate 때 삭제됨)
-const VERSION = 'v1'
+const VERSION = 'v2' // v2: 데이터 구조 개편 (2026-10) — 옛 캐시 정리
+const DATA_CACHE = `data-${VERSION}`   // data/passages.json
 const APP_CACHE = `app-${VERSION}`     // index.html, JS/CSS 번들, 아이콘
 const AUDIO_CACHE = `audio-${VERSION}` // 암송 mp3
 const FONT_CACHE = `font-${VERSION}`   // Google Fonts
@@ -8,6 +9,7 @@ const FONT_CACHE = `font-${VERSION}`   // Google Fonts
 const PRECACHE = [
   './',
   './manifest.webmanifest',
+  './data/passages.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon.svg',
@@ -29,7 +31,7 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
-  const keep = [APP_CACHE, AUDIO_CACHE, FONT_CACHE]
+  const keep = [APP_CACHE, AUDIO_CACHE, FONT_CACHE, DATA_CACHE]
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => !keep.includes(k)).map((k) => caches.delete(k))))
@@ -107,13 +109,23 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return
 
-  // 3) mp3: 캐시 우선 (한 번 들은 구절은 오프라인 재생 가능)
+  // 3) 본문 데이터: 네트워크 우선 (오타 수정이 바로 반영되게) → 오프라인이면 캐시
+  if (url.pathname.endsWith('/data/passages.json')) {
+    event.respondWith(
+      fetch(request)
+        .then((res) => put(DATA_CACHE, url.pathname, res))
+        .catch(() => caches.match(url.pathname).then((c) => c || caches.match('./data/passages.json')))
+    )
+    return
+  }
+
+  // 4) mp3: 캐시 우선 (한 번 들은 구절은 오프라인 재생 가능)
   if (url.pathname.endsWith('.mp3')) {
     event.respondWith(audioResponse(request, url.pathname))
     return
   }
 
-  // 4) 해시가 붙은 빌드 파일(assets/index-xxxx.js/css) 및 아이콘: 캐시 우선
+  // 5) 해시가 붙은 빌드 파일(assets/index-xxxx.js/css) 및 아이콘: 캐시 우선
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request).then((res) => put(APP_CACHE, request, res)))
   )

@@ -1,56 +1,35 @@
-# 02. 아키텍처 / 화면 흐름
+# 02. 아키텍처 / 화면 흐름 (v2, 2026-10-25)
 
-## 화면 전환 (App.jsx)
-라우터 라이브러리 없이 `useState`로 화면을 전환한다.
-
+## 화면 전환 (`App.jsx`)
+라우터 없이 `nav` 상태 + `history.pushState/popstate` (휴대폰 뒤로가기 = 이전 화면).
 ```
-state: screen ('home' | 'memorization-list' | 'memorization'), selectedPassage
+nav = { screen: 'list' } | { screen: 'passage', id, fromList } | { screen: 'continuous', stage } | { screen: 'install' }
 
-HomeScreen ──[말씀암송 카드]──▶ PassageListScreen ──[구절 선택]──▶ MemorizationScreen
-    ▲                               │  ▲                                │
-    └──────────[뒤로]───────────────┘  └─────────────[뒤로]─────────────┘
+ListScreen ──구절──▶ PassageScreen ──이전/다음(replaceState)──▶ PassageScreen
+    │ └─연속듣기──▶ ContinuousScreen ──"이 구절만 따로 반복"──▶ PassageScreen
+    └─앱 설치──▶ InstallScreen
 ```
+- 시작 시 `fetch('./data/passages.json')` → 모든 구절을 `all`(단계 순 → JSON 순)로 펼침, `stageName` 부여
+- 새로고침해도 `history.state` 로 현재 화면 복원
+- v1 의 HomeScreen(오늘의 말씀, 기도문 Soon 카드)은 없앰 — 목록이 첫 화면
 
-- `handleSelectPassage(id)` : `PASSAGES.find(p => p.id === id)` → `selectedPassage` 설정 → `'memorization'`
-- 브라우저 뒤로가기/URL 연동 없음 (history API 미사용). Android 래핑 시 하드웨어 back 버튼 처리 필요.
-- 화면이 바뀌면 이전 화면 컴포넌트는 언마운트됨 → 오디오도 같이 정리됨.
+## 화면
+| 화면 | 역할 |
+|------|------|
+| ListScreen | 진행도 ✓n/전체, 앱 설치 버튼(미설치 시), 이어서 암송하기, 단계 탭(단계 2개 이상일 때만), 전체 연속듣기, 구절 목록(번호·장절·아랍어 장절·한국어 미리보기·절 수·완료 배지) |
+| PassageScreen | 본문(Karaoke) + 구간 반복 카드 + 반복 설정 + 더보기(보기·단어 가리기·타이밍 맞추기) + 이전/다음 + 하단 Player. 완료 표시 토글, Media Session, 키보드 |
+| ContinuousScreen | 한 단계를 1번부터 차례로, 구절마다 1~3번, 끝나면 처음부터. `<audio>` 하나의 src 를 바꿔 가며 재생. 재생 순서 목록, 이전/다음, 잠금화면 다음/이전 트랙 |
+| InstallScreen | v1 그대로 (안드로이드 원클릭 설치, 아이폰 안내, 인앱 브라우저 대응, QR) |
 
-## 컴포넌트별 역할
+## 핵심 모듈 (`src/lib`)
+- `looper.js` — `<audio>` 래퍼 클래스. 모드 stopped/playing/paused/gap, 구간(range), 반복 횟수, 쉬는 시간, 속도(preservesPitch). rAF 로 끝점 검사(정확), 화면 꺼지면 timeupdate. `subscribe()` 로 React 갱신, `onDone` 은 연속듣기에서 다음 구절로
+- `align.js` — 쉼 감지(`detectSpeech`) + 말소리 덩어리 ↔ 단어 DP(`alignWords`) + **`alignAuto`(우리 추가: 맨 앞 장절 제목 읽기 제거)**
+- `text.js` — **우리 버전**: 아랍어 단어 나누기, 단어 길이 = 한국어 발음 음절 수
+- `timing.js` — 브라우저 디코드·분석 캐시, `applyMarks`(절 시작에 맞춰 단어 시간 보정), **`timesFromStarts`(우리 추가: 분석 전 절 시작만으로 시간 생성)**, `snapToOnset`, `wordAt`
+- `storage.js` — localStorage 래퍼, 키 앞 `bible:`
+- `mask.js` — 단어 가리기 (끔/조금/많이/전부, 구절별 고정 순서)
 
-### HomeScreen (`src/screens/HomeScreen.jsx`)
-- props: `onNavigate(screenName)`, `onSelectPassage(id)`
-- 골드 zenith 광원 + 금빛 테두리 카드 (배경 이미지는 제거됨)
-  - `말씀암송` → `onNavigate('memorization-list')`
-  - `기도문` → `disabled`, "Soon" 배지 (Phase 1 미구현)
-- 하단 인용: 시편 119:105
-- 리디자인(2026-09-29) 후: 브랜드 바 → 히어로 → **오늘의 말씀** 배너(`onSelectPassage`로 암송 화면 직행) → 메뉴 카드 → 푸터
-
-### PassageListScreen (`src/screens/PassageListScreen.jsx`)
-- props: `onSelect(id)`, `onBack()`
-- `PASSAGES`를 검색어(`query`)와 구약/신약 필터(`filter`)로 거른 뒤 카드로 표시
-
-### MemorizationScreen (`src/screens/MemorizationScreen.jsx`)
-- props: `passage`, `onBack()`
-- 구성: 상단바(뒤로 / 참조 / 타이밍 버튼) → (캘리브레이션 배너) → 한국어 절 목록 → 구분선(✦) → 아랍어 절 목록(`dir="rtl"`) → 하단 고정 AudioPlayer
-- 상태:
-  - `activeIndex` : 현재 하이라이트 중인 절 (null = 하이라이트 없음)
-  - `calibrating` : 타이밍 맞추기 모드 여부
-  - `timestamps` : 절별 시작 시간 배열
-  - `markedCount` : 캘리브레이션 중 탭한 횟수
-  - `currentTimeRef` : 최신 재생 시간 (리렌더 없이 참조)
-  - `verseRefs` : 한국어 절 DOM ref (자동 스크롤용)
-- 자세한 동작은 [04_features.md](04_features.md)
-
-### AudioPlayer (`src/components/AudioPlayer.jsx`)
-- props: `audioFile`, `onTimeUpdate(time)`
-- `<audio preload="metadata">` + 진행바 + 재생/일시정지 + 배속 버튼
-- 부모에게 `onTimeUpdate`로 시간 전달 (재생 종료 시 `0` 전달 → 하이라이트 해제)
-
-## 데이터 흐름
-```
-verses.js (PASSAGES) ──▶ App ──passage──▶ MemorizationScreen
-                                             │  timestamps ◀── localStorage `timestamps_<id>`
-                                             ▼
-                                         AudioPlayer ──onTimeUpdate(t)──▶ MemorizationScreen
-                                                                             └ getActiveVerseIndex → activeIndex → 하이라이트/스크롤
-```
+## 컴포넌트
+- `Karaoke` — 절마다 [절 번호 버튼 · 아랍어(단어 span, RTL) · 발음 · 한국어]. 처음 한 번 렌더 후 rAF 로 class 만 갱신 (r 읽음, c 읽는 중 --p 오른쪽부터, o 구간 밖, m 가림, active 현재 절, verseOut 구간 밖 절)
+- `Player` — 진행바(절 경계 눈금, 구간 금색 띠, A·B 손잡이 드래그), 여기부터/정지/재생/여기까지, 상태 문구("3번째 / ∞")
+- `Segmented` — 선택 버튼 묶음

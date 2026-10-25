@@ -1,59 +1,49 @@
-# 01. 프로젝트 개요 — 말씀암송 앱
+# 01. 프로젝트 개요 — 말씀암송 (한국어 · 아랍어)
 
-> 분석 기준일: 2026-09-29
+> 마지막 업데이트: 2026-10-25 (v2 전면 개편)
 
 ## 한 줄 요약
-한국어-아랍어 이중 언어 성경 암송 웹 앱. React 18 + Vite 5, 서버 없이 정적 배포. 추후 Android(WebView/Capacitor)로 래핑 예정.
+아랍어 낭독을 듣고 구간을 반복하며 성경 구절을 외우는 PWA. React 18 + Vite 5, 서버 없음.
+배포: GitHub `johnehk86/bible_app` → Cloudflare Pages (https://bible-app-3ta.pages.dev, 루트 디렉터리 `app`).
 
-## 폴더 구조 (프로젝트 루트: `D:\01_WorkPlace\260_Bible_App_Project`)
+## 연혁
+- 2026-09: v1 — 홈/구절 목록/암송 화면, 골드(Sanctuary) 테마, PWA, 절 타이밍 자동 계산
+- **2026-10-25: v2** — 사용자가 새 엑셀(`DA 1단계 암송구절(한국어-아랍어)_수정 (2).xlsx`)을 줌 + 참고 앱
+  `D:\01_WorkPlace\280_IDEA\02_bible_app\malsseum-app` 의 디자인·기능(구간 반복, 연속듣기 등)을 옮겨 **새로 구성**
+  - 참고 앱은 우리 v1 의 디자인을 이어받아 발전시킨 한국어 낭독 앱 (밝은 테마, Looper, A·B 손잡이, 연속듣기, 단어 가리기)
+
+## 폴더 구조
 ```
 260_Bible_App_Project/
-├─ bible-app-spec.md          # Phase 1 요구사항 문서 (files/ 안에도 동일본 있음)
-├─ files/                     # 원본 자료
-│  ├─ DA 1단계 암송구절(한국어-아랍어).xlsx   # 원본 텍스트 (한국어/아랍어/한글음가, 시트별 구절)
-│  └─ DA 1단계 암송구절(아랍어) 음원/        # 원본 mp3 13개 (한글 파일명)
-├─ files.zip, *.mp3           # 원본 사본 (루트에 굴러다니는 파일)
-├─ memory/                    # ← 이 분석 문서들
-└─ app/                       # 실제 앱 코드
-   ├─ index.html              # Google Fonts(Noto Sans KR, Noto Naskh Arabic) 로드
-   ├─ vite.config.js          # base: './' (상대경로 빌드 → 앱 래핑 대비)
-   ├─ package.json            # react, react-dom / vite, @vitejs/plugin-react 만 사용
-   ├─ public/assets/          # mp3 13개(영문 파일명) + bg-landscape.jpg
-   ├─ dist/                   # 빌드 결과물 (2026-09-24 빌드)
+├─ files/DA 1단계 암송구절(아랍어) 음원/   ← 원본 (엑셀 1개 + mp3 13개). git 제외
+├─ data/                                    ← 사용자가 둔 다른 자료(네비게이토 암송, 이집트 암미에 기도문 105MB 등). git 제외, 아직 미사용
+├─ memory/                                  ← 이 문서들
+└─ app/                                     ← 앱 (README.md 에 사용법·데이터 수정법 상세)
+   ├─ public/data/passages.json   본문 (npm run data 로 생성)
+   ├─ public/audio/<id>.mp3       녹음
+   ├─ public/sw.js, manifest, icons, _headers
+   ├─ scripts/build-data.mjs      엑셀 → JSON + 음원 복사 + 절 타이밍
+   ├─ scripts/check-align.mjs     타이밍 점검
    └─ src/
-      ├─ main.jsx             # StrictMode + createRoot
-      ├─ App.jsx              # 화면 전환(상태 기반 라우팅)
-      ├─ index.css            # 전역 리셋 + CSS 변수(다크 테마)
-      ├─ data/verses.js       # PASSAGES(13개 구절), SPEED_OPTIONS
-      ├─ screens/
-      │  ├─ HomeScreen.jsx         (+ .module.css)
-      │  ├─ PassageListScreen.jsx  (+ .module.css)
-      │  └─ MemorizationScreen.jsx (+ .module.css)
-      └─ components/
-         └─ AudioPlayer.jsx        (+ .module.css)
+      ├─ App.jsx                  화면 전환 (history 연동)
+      ├─ lib/  looper · align · text · timing · storage · mask · format
+      ├─ components/  Karaoke · Player · Segmented
+      ├─ screens/  ListScreen · PassageScreen · ContinuousScreen · InstallScreen
+      └─ pwa.js                   설치 프롬프트/기기 판별
 ```
 
-## 실행 방법
+## 명령
 ```bash
 cd app
-npm install
-npm run dev      # 개발 서버
-npm run build    # dist/ 생성
-npm run preview  # 빌드 결과 미리보기
+npm run dev / build / preview
+npm run data           # 엑셀 바꾼 뒤 실행
+npm run check-align    # 타이밍 점검
 ```
 
-## 기술 스택
-- React 18.3 (함수형 컴포넌트 + hooks, 외부 상태관리/라우터 없음)
-- Vite 5.4
-- CSS Modules (`*.module.css`) + 전역 CSS 변수
-- HTML5 `<audio>` API (재생/배속/탐색)
-- `localStorage` (절별 타임스탬프 저장)
-- 테스트, 린터, TypeScript, git 없음
-
 ## 관련 문서
-- [02_architecture.md](02_architecture.md) — 화면 흐름 / 컴포넌트 구조
-- [03_data-model.md](03_data-model.md) — verses.js 데이터 구조, 구절 목록
-- [04_features.md](04_features.md) — 오디오 플레이어, 절 타이밍 자동 계산, 강조, 타이밍 조절 모드
-- [05_ui-design.md](05_ui-design.md) — 디자인 토큰, 레이아웃
-- [06_issues-and-roadmap.md](06_issues-and-roadmap.md) — 발견된 버그/개선점, 로드맵
-- [07_pwa-install.md](07_pwa-install.md) — 앱 설치(PWA), 서비스 워커/오프라인, 설치 안내 화면
+- [02_architecture.md](02_architecture.md) — 화면 흐름 / 컴포넌트
+- [03_data-model.md](03_data-model.md) — passages.json, 엑셀 변환, 구절 목록
+- [04_features.md](04_features.md) — 구간 반복, 연속듣기, 글자 색칠·타이밍
+- [05_ui-design.md](05_ui-design.md) — 디자인 토큰 (어두운/밝은 테마)
+- [06_issues-and-roadmap.md](06_issues-and-roadmap.md) — 이슈, 데이터 오타, 할 일
+- [07_pwa-install.md](07_pwa-install.md) — 앱 설치(PWA), 서비스 워커

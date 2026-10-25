@@ -5,6 +5,7 @@ dist/
 # 원본 자료 (앱에서 쓰는 mp3는 app/public/assets 에 있음)
 /files/
 /files.zip
+/data/
 /*.mp3
 
 # local settings

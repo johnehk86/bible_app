@@ -1,0 +1,146 @@
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── 절 (아랍어 · 발음 · 한국어 한 묶음) ── */
+.verse {
+  position: relative;
+  padding: 10px 12px 12px 46px;
+  margin: 0 -10px;
+  border-radius: 14px;
+  transition: background 0.35s ease, box-shadow 0.35s ease, opacity 0.3s ease;
+}
+
+.verse + .verse {
+  border-top: 1px solid var(--gild-soft);
+}
+
+.active {
+  background: linear-gradient(to right, var(--gild-soft), transparent 85%);
+  box-shadow: inset 2px 0 0 var(--primary-container);
+}
+
+.active + .verse {
+  border-top-color: transparent;
+}
+
+/* 반복 구간에 전혀 걸리지 않는 절 */
+.verseOut {
+  opacity: 0.4;
+}
+
+/* 절 번호 = "이 절만 반복" 버튼 (터치 영역 넉넉히) */
+.num {
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-dim);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--gild-soft);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.num:hover:not(:disabled) {
+  background: var(--gild-soft);
+  border-color: var(--gild);
+  color: var(--primary);
+}
+
+.num:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.numStatic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.active .num {
+  color: var(--primary);
+  border-color: var(--gild-active);
+}
+
+/* ── 아랍어 (녹음과 함께 색칠) ── */
+.ar {
+  font-family: var(--font-arabic);
+  font-size: 23px;
+  line-height: 2.05;
+  text-align: right;
+  color: var(--unread);
+}
+
+/* ── 발음 / 한국어 뜻 ── */
+.pron {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--outline);
+  word-break: keep-all;
+}
+
+.ko {
+  margin-top: 6px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--on-surface-variant);
+  word-break: keep-all;
+}
+
+.active .ko {
+  color: var(--on-surface);
+}
+
+/* ── 단어 ── */
+.w {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.25s ease, opacity 0.3s ease, text-shadow 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.w:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--gild-active);
+  text-underline-offset: 8px;
+}
+
+/* 반복 구간 밖 */
+.o {
+  opacity: 0.38;
+}
+
+/* 이미 읽은 단어 */
+.r {
+  color: var(--read);
+  text-shadow: 0 0 16px var(--gild);
+}
+
+/* 지금 읽는 단어: 아랍어는 오른쪽에서 왼쪽으로 읽으므로 오른쪽부터 --p 만큼 칠함 */
+.c {
+  --p: 0%;
+  color: transparent;
+  background-image: linear-gradient(270deg, var(--read) var(--p), var(--unread) var(--p));
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: none;
+}
+
+/* 가린 단어: 글자 대신 칸. 읽는 순간 드러난다 */
+.m:not(.r):not(.c) {
+  color: transparent;
+  background: var(--mask);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  text-shadow: none;
+}
