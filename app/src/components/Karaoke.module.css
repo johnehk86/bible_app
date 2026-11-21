@@ -156,3 +156,27 @@
 .noAudio::before {
   content: '♪̸ ';
 }
+
+/* 다른 형태 (기도문: 우리가 ↔ 내가 등). 녹음은 본 표현 다음에 이것도 읽는다 */
+.altLine {
+  margin-top: 4px;
+  padding-top: 2px;
+  border-top: 1px dashed var(--gild-soft);
+}
+
+.altLine .ar {
+  font-size: 20px;
+}
+
+.altTag {
+  display: inline-block;
+  margin-inline-end: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--gild);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--outline);
+  vertical-align: middle;
+}

@@ -178,7 +178,7 @@ export default function ContinuousScreen({ stage, stageName, passages, onBack, o
       ms.metadata = new MediaMetadata({
         title: passage.ref,
         artist: `${stageName} 연속듣기 · ${idx + 1}/${n}`,
-        album: '말씀암송',
+        album: '아이템 창고',
         artwork: [{ src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }],
       })
       ms.setActionHandler('play', () => looper.play())

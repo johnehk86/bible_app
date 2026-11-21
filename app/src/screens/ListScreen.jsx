@@ -32,7 +32,7 @@ export default function ListScreen({ data, all, done, onOpen, onContinuous, onIn
             <path d="M12 6.5C10.2 5.2 7.6 4.5 4 4.5v13c3.6 0 6.2.7 8 2 1.8-1.3 4.4-2 8-2v-13c-3.6 0-6.2.7-8 2z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
             <path d="M12 6.5v13" stroke="currentColor" strokeWidth="1.6" />
           </svg>
-          말씀암송
+          아이템 창고
         </span>
         <span className={styles.barRight}>
           {!installed && (

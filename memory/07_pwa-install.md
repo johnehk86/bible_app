@@ -7,7 +7,7 @@
 ## 구성 파일
 | 파일 | 역할 |
 |------|------|
-| `app/public/manifest.webmanifest` | 앱 이름(말씀암송), 아이콘, `display: standalone`, 테마색 `#111319`, `start_url/scope: ./` |
+| `app/public/manifest.webmanifest` | 앱 이름(아이템 창고, 2026-11-21 변경), 아이콘, `display: standalone`, 테마색 `#111319`, `start_url/scope: ./` |
 | `app/public/icons/` | `icon.svg`(원본: 금색 펼친 책 + 별), `icon-192/512.png`, `apple-touch-icon.png`(180) — maskable 안전영역 안에 그림 배치 |
 | `app/public/sw.js` | 서비스 워커 (오프라인). v2(2026-10-25): 참고 앱 버전으로 교체 — `data/passages.json` 은 **네트워크 우선**(오타 수정 즉시 반영), VERSION 'v2' 로 옛 캐시 삭제 |
 | `app/public/_headers` | Cloudflare Pages: `sw.js`, 매니페스트 `Cache-Control: no-cache` |

@@ -98,10 +98,12 @@ function Karaoke({ verses, words, times, looper, range, masked, showKo = true, s
   return (
     <div className={styles.text} onClick={handleClick}>
       {verses.map((v, vi) => {
-        const items = []
+        // 줄별(본 표현 / 다른 형태) 단어 span
+        const lines = []
         while (wi < words.length && words[wi].verseIndex === vi) {
           const i = wi
-          items.push(
+          const part = words[i].part || 0
+          ;(lines[part] ||= []).push(
             <span
               key={i}
               data-i={i}
@@ -114,6 +116,8 @@ function Karaoke({ verses, words, times, looper, range, masked, showKo = true, s
           )
           wi++
         }
+        const items = lines[0] || []
+        const alts = (v.alts || []).map((a, k) => ({ ...a, items: lines[k + 1] || [] }))
         return (
           <div key={v.n} className={styles.verse} ref={el => (versesRef.current[vi] = el)}>
             {onVerseTap ? (
@@ -132,6 +136,15 @@ function Karaoke({ verses, words, times, looper, range, masked, showKo = true, s
             <p className={styles.ar} dir="rtl" lang="ar">{items}</p>
             {v.noAudio && <p className={styles.noAudio}>녹음에 없는 {unit}이에요</p>}
             {showPron && v.pron && <p className={styles.pron} lang="ko">{v.pron}</p>}
+            {alts.map((a, k) => (
+              <div key={k} className={styles.altLine}>
+                <p className={styles.ar} dir="rtl" lang="ar">
+                  <span className={styles.altTag} lang="ko">또는</span>
+                  {a.items}
+                </p>
+                {showPron && a.pron && <p className={styles.pron} lang="ko">{a.pron}</p>}
+              </div>
+            ))}
             {showKo && v.ko && <p className={styles.ko} lang="ko">{v.ko}</p>}
           </div>
         )

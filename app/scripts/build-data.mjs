@@ -14,9 +14,9 @@
 //     mp3: 주제 폴더("1. 하나님을 알아감/") 안에 "갈라디아서 4장 6절.mp3", "에베소서 6장 10절에서 11절.mp3"
 //     → 녹음이 있는 항목만 앱에 넣는다 (녹음을 추가하고 다시 돌리면 자동으로 늘어남)
 //   [단계 3] 이집트 암미에 기도문/
-//     엑셀: 자료 정리/*.xlsx (1부, 2부 — "리스트" 파일은 제외). 시트 하나 = 단원 ("2-1. 감사를 표현할때")
-//       4행부터 A 한국어 의미 B 이집트 구어체 아랍어 C 한글 발음
-//     mp3: 이집트 암미에 기도문 음성 파일/ "2-1. 감사를 표현할때(9번 표현이 없음).mp3" — 앞 번호로 시트와 짝
+//     이집트 암미에 기도문 음성 파일/ 안에 엑셀(Egyptian_Arabic_Prayers_*.xlsx) + mp3
+//     엑셀: 시트 = 장(1~8), 시트 안 "📌 패턴 N" 으로 패턴 구분, 번호 없는 줄 = 위 표현의 다른 형태
+//     mp3: "7. 요청의 기도(패턴 1,1-14번까지).mp3" → 7장 패턴 1 의 1~14번
 //     → 음원 하나 = 단원 하나, 표현 한 줄 = 절 하나 (화면에는 "표현"으로 표시)
 //
 // 절 시작 시간(start)을 손으로 고정하고 싶으면 passages.json 에서 그 절에 "startFixed": true 를 넣는다.
@@ -32,7 +32,6 @@ const APP = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILES = path.join(APP, '..', 'files')
 const DA_DIR = path.join(FILES, 'DA 1단계 암송구절(아랍어) 음원')
 const NAV_DIR = path.join(FILES, '네비 게이토 성경 암송 구절(아랍어) 음원')
-const PRAYER_XLSX_DIR = path.join(FILES, '이집트 암미에 기도문', '자료 정리')
 const PRAYER_AUDIO_DIR = path.join(FILES, '이집트 암미에 기도문', '이집트 암미에 기도문 음성 파일')
 const OUT_JSON = path.join(APP, 'public', 'data', 'passages.json')
 const OUT_AUDIO = path.join(APP, 'public', 'audio')
@@ -221,72 +220,116 @@ function buildNav() {
 }
 
 // ── 단계 3: 이집트 암미야(구어체) 기도문 ──
-// 음원 하나 = 단원 하나. 음원 이름의 번호("2-1", "7-1-1")와 같은 번호의 시트(들)를 찾아 표현을 이어 붙인다.
-// ("1. 기도에 대한 호칭-1,2.mp3" 처럼 두 시트를 한 번에 녹음한 파일은 -1, -2 시트를 차례로)
+// 엑셀: 음성 파일 폴더의 Egyptian_Arabic_Prayers_*.xlsx — 시트 = 장(1~8), 시트 안 "📌 패턴 N: ..." 으로 패턴 구분
+//   표: A 순서(번호) B 한국어 의미 C 이집트 구어체 아랍어 D 한글 발음. 번호가 없는 줄 = 바로 위 표현의 다른 형태
+// 음원: "7. 요청의 기도(패턴 1,1-14번까지).mp3" → 7장 · 패턴 1 · 1~14번. "7-10. ….mp3" → 7장 패턴 10
+//   패턴이 하나뿐인 장(1, 3, 5, 8)은 파일 이름에 패턴이 없다
+// → 음원 하나 = 단원 하나, 표현 한 줄 = 절 하나 (화면에는 "표현"). 다른 형태는 그 표현의 alts
 function buildPrayer() {
-  const xlsxFiles = fs.readdirSync(PRAYER_XLSX_DIR).filter(f => f.endsWith('.xlsx') && !f.startsWith('~$') && !f.includes('리스트')).sort()
-  const sheets = xlsxFiles.flatMap(f => {
-    console.log('엑셀:', path.relative(FILES, path.join(PRAYER_XLSX_DIR, f)))
-    return readXlsx(path.join(PRAYER_XLSX_DIR, f))
-  })
-  const codeOf = (name) => /^([\d-]+?)\.?\s/.exec(name.trim())?.[1]
-  const titleOf = (name) => name.trim().replace(/^[\d-]+\.?\s*/, '').replace(/\s*-\d$/, '').trim()
+  const xlsx = fs.readdirSync(PRAYER_AUDIO_DIR).find(f => f.endsWith('.xlsx') && !f.startsWith('~$'))
+  if (!xlsx) throw new Error(`기도문 엑셀을 찾지 못했어요: ${PRAYER_AUDIO_DIR}`)
+  console.log('엑셀:', path.relative(FILES, path.join(PRAYER_AUDIO_DIR, xlsx)))
   // 아랍어 정리: 구어체 표시 "(ع)" 빼기, 따로 떨어진 문장부호·빗금은 앞 단어에 붙이기
-  const cleanAr = (s) => s.replace(/\(ع\)\s*/g, '').replace(/\s+([!?؟.,،:؛/])/g, '$1').replace(/\s+/g, ' ').trim()
+  const cleanAr = (s) => (s || '').replace(/\(ع\)\s*/g, '').replace(/\s+([!?؟.,،:؛/])/g, '$1').replace(/\s+/g, ' ').trim()
+  const cellText = (r) => Object.entries(r).filter(([k]) => k !== 'r').map(([, v]) => v).join(' ')
+  // 패턴 문형에서 아랍어 부분만: 처음 나오는 한글 앞까지 자르고 끝에 남은 ( / 기호 정리
+  //   "بِنْقَدِّمْ لِك (أَوْ بَاقَدِّمْ لِك) + اسم / 동명사 (빈갓딤 리크 …)" → "بِنْقَدِّمْ لِك (أَوْ بَاقَدِّمْ لِك) + اسم"
+  const arabicFormula = (s) => {
+    const k = s.search(/[가-힣]/)
+    return (k < 0 ? s : s.slice(0, k)).replace(/[\s(/[+]+$/, '').trim()
+  }
+
+  // 장 → { title, patterns: [{ no, title, formula, items: [{ n, ko, ar, pron, alts }] }] }
+  const chapters = new Map()
+  for (const sheet of readXlsx(path.join(PRAYER_AUDIO_DIR, xlsx))) {
+    const ch = parseInt(sheet.name, 10)
+    if (!ch) continue
+    const chapter = { title: sheet.name.trim(), patterns: [] }
+    let pat = null
+    for (const r of sheet.rows) {
+      const text = cellText(r)
+      if (text.includes('📌')) {
+        // "📌 패턴 1: 명사에 대한 감사 (...)  |  بَاشْكُرَكْ عَلَى + اسم (바슈쿠락 알라 + 명사)"
+        const [ko, ar = ''] = text.replace('📌', '').split('|').map(s => s.trim())
+        const no = +(/패턴\s*(\d+)/.exec(ko)?.[1] || 0)
+        pat = { no, title: ko.replace(/^패턴\s*\d+\s*:\s*/, '').trim(), formula: arabicFormula(ar), items: [] }
+        chapter.patterns.push(pat)
+        continue
+      }
+      if (!pat || !r.C) continue
+      if (/^\d+$/.test(r.A || '')) {
+        pat.items.push({ n: +r.A, ko: r.B || '', ar: cleanAr(r.C), pron: r.D || '', alts: [] })
+      } else if (pat.items.length) {
+        pat.items[pat.items.length - 1].alts.push({ ar: cleanAr(r.C), pron: r.D || '' })
+      }
+    }
+    chapters.set(ch, chapter)
+  }
 
   const audioFiles = fs.readdirSync(PRAYER_AUDIO_DIR).filter(f => f.endsWith('.mp3'))
-    .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }))
-  const groups = new Map() // 장 번호 → 장 제목
+  const units = audioFiles.map(file => {
+    const m = /^(\d+)(?:-(\d+))?\./.exec(file)
+    if (!m) { warnings.push(`기도문 음원 "${file}": 앞 번호를 찾지 못했어요`); return null }
+    const ch = +m[1]
+    const note = /\(([^)]*)\)\s*\.mp3$/.exec(file)?.[1] || ''
+    const patNo = m[2] ? +m[2] : +(/패턴\s*(\d+)/.exec(note)?.[1] || 0)
+    const range = /(\d+)\s*[-~]\s*(\d+)\s*번/.exec(note)
+    const chapter = chapters.get(ch)
+    const pat = chapter?.patterns.find(p => p.no === patNo) || (chapter?.patterns.length === 1 ? chapter.patterns[0] : null)
+    if (!pat) { warnings.push(`기도문 음원 "${file}": 엑셀에서 ${ch}장 패턴 ${patNo || '?'} 을 찾지 못했어요`); return null }
+    const from = range ? +range[1] : 1
+    const to = range ? +range[2] : Infinity
+    const items = pat.items.filter(it => it.n >= from && it.n <= to)
+    if (!items.length) { warnings.push(`기도문 음원 "${file}": 표현이 없어요`); return null }
+    return { file, ch, pat, from, to: range ? to : null, items }
+  }).filter(Boolean)
+    .sort((a, b) => a.ch - b.ch || a.pat.no - b.pat.no || a.from - b.from)
 
-  const passages = audioFiles.map(file => {
-    const code = /^([\d-]+)\./.exec(file)?.[1]
-    const own = sheets.filter(s => codeOf(s.name) === code)
-      .sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }))
-    if (!own.length) { warnings.push(`기도문 음원 "${file}": 같은 번호의 시트가 없어요`); return null }
-
-    // 파일 이름 메모: "(9번 표현이 없음)" → 그 표현은 녹음에 없음
-    const missing = new Set([.../(\d+)번 표현이 없음/g.exec(file) ? [+/(\d+)번 표현이 없음/.exec(file)[1]] : []])
-    const verses = own.flatMap(s => s.rows.filter(r => r.r >= 4 && r.B))
-      .map((r, i) => {
-        const v = { n: i + 1, ko: r.A || '', ar: cleanAr(r.B), pron: r.C || '' }
-        if (missing.has(i + 1)) v.noAudio = true
-        return v
-      })
-    if (missing.size) warnings.push(`기도문 "${file}": ${[...missing].join(',')}번 표현은 녹음에 없음으로 표시`)
-
-    const major = code.split('-')[0]
-    const title = titleOf(own[0].name)
-    if (!groups.has(major) || code === major) groups.set(major, `${major}. ${title}`)
-    const id = `pray_${code}`
+  const passages = units.map((u, i) => {
+    const chapter = chapters.get(u.ch)
+    const multi = chapter.patterns.length > 1
+    const rangeLabel = u.to ? ` (${u.from}~${u.to}번)` : ''
+    const id = `pray_${u.ch}${u.pat.no ? `_p${u.pat.no}` : ''}${u.to ? `_${u.from}-${u.to}` : ''}`
+    const verses = u.items.map(it => {
+      const v = { n: it.n, ko: it.ko, ar: it.ar, pron: it.pron }
+      if (it.alts.length) v.alts = it.alts
+      return v
+    })
     keepFixed(id, verses)
     return {
       id,
+      no: i + 1,
       unit: '표현',
-      major,
-      ref: `${code}. ${title}`,
-      audio: copyAudio(path.join(PRAYER_AUDIO_DIR, file), id),
+      group: chapter.title,
+      ref: multi ? `${u.ch}. 패턴 ${u.pat.no}${rangeLabel}` : `${chapter.title}${rangeLabel}`,
+      topic: multi ? u.pat.title : undefined,
+      formula: u.pat.formula || undefined,
+      audio: copyAudio(path.join(PRAYER_AUDIO_DIR, u.file), id),
       verses,
     }
-  }).filter(Boolean)
-
-  passages.forEach((p, i) => {
-    p.no = i + 1
-    p.group = groups.get(p.major)
-    delete p.major
   })
+  // 쓰지 않은 패턴 (녹음이 없는 패턴)
+  for (const [ch, chapter] of chapters) {
+    for (const p of chapter.patterns) {
+      const covered = units.filter(u => u.ch === ch && u.pat === p).flatMap(u => u.items.map(it => it.n))
+      const missing = p.items.filter(it => !covered.includes(it.n)).map(it => it.n)
+      if (missing.length) warnings.push(`기도문 ${ch}장 패턴 ${p.no || '-'}: 녹음이 없는 표현 ${missing.join(',')}번`)
+    }
+  }
   console.log(`  기도문: 단원 ${passages.length}개, 표현 ${passages.reduce((a, p) => a + p.verses.length, 0)}개`)
   return { stage: 3, name: '암미야 기도문', passages }
 }
 
 // 녹음과 글이 맞는지 판정 (기도문용)
 //  - 발화 속도가 3~7 음절/초 밖이면 → 반복해서 읽었거나(느림) 일부를 건너뜀(빠름)
-//  - 0.9초 넘는 쉼으로 나눈 말소리 묶음이 표현 수보다 적으면 → 빠진 표현이 있음
+//  - 0.4초 넘는 쉼으로 나눈 말소리 묶음이 표현 수보다 적으면 → 빠진 표현이 있음
+//    (짧은 표현 목록은 1초 미만의 쉼으로 이어 읽는 경우가 많아 0.9초 기준은 너무 엄격했음)
 //  - 맞춘 결과에서 다른 표현보다 1.5배 넘게 빠르거나 느린 표현이 30% 넘으면 → 경계가 엉킴
 function timingQuality(verses, words, segs, times) {
   const groups = []
   for (const [a, b] of segs) {
     const g = groups[groups.length - 1]
-    if (g && a - g.end < 0.9) { g.end = b; g.speech += b - a } else groups.push({ end: b, speech: b - a })
+    if (g && a - g.end < 0.4) { g.end = b; g.speech += b - a } else groups.push({ end: b, speech: b - a })
   }
   const G = groups.filter(g => g.speech >= 0.25).length
   const N = verses.filter(v => !v.noAudio).length
@@ -301,7 +344,7 @@ function timingQuality(verses, words, segs, times) {
   const odd = rates.filter(r => r / med > 1.5 || med / r > 1.5).length / rates.length
   if (rate < 3) return { ok: false, why: `느림 ${rate.toFixed(1)}음절/초 — 반복 낭독으로 보임` }
   if (rate > 7) return { ok: false, why: `빠름 ${rate.toFixed(1)}음절/초 — 빠진 표현이 있어 보임` }
-  if (G < N - Math.max(1, Math.round(N * 0.15))) return { ok: false, why: `말소리 묶음 ${G}개 < 표현 ${N}개` }
+  if (G < N - Math.max(1, Math.round(N * 0.15))) return { ok: false, why: `말소리 묶음 ${G}개 < 표현 ${N}개 — 빠진 표현이 있어 보임` }
   if (odd > 0.3) return { ok: false, why: `표현 경계가 고르지 않음 (${Math.round(odd * 100)}%)` }
   return { ok: true }
 }
@@ -349,6 +392,7 @@ if (!noAlign) {
     const o = prevById.get(p.id)
     if (!o) continue
     p.duration = o.duration
+    if (o.autoTiming === false) p.autoTiming = false
     p.verses.forEach((v, i) => { if (v.start == null && String(o.verses[i]?.n) === String(v.n)) v.start = o.verses[i].start })
   }
 }

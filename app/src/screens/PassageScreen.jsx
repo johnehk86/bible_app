@@ -249,7 +249,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
     try {
       ms.metadata = new MediaMetadata({
         title: passage.ref,
-        artist: '말씀암송',
+        artist: '아이템 창고',
         album: passage.stageName,
         artwork: [{ src: './icons/icon-512.png', sizes: '512x512', type: 'image/png' }],
       })
@@ -335,6 +335,7 @@ export default function PassageScreen({ passage, prev, next, done, onToggleDone,
           <h1 className={styles.title}>{passage.ref}</h1>
           {passage.refAr && <p className={styles.titleAr} dir="rtl" lang="ar">{passage.refAr}</p>}
           {passage.topic && <p className={styles.topic}>{passage.topic}</p>}
+          {passage.formula && <p className={styles.formula} dir="rtl" lang="ar" title="문형">{passage.formula}</p>}
           {hasAudio && (
             <p className={styles.hint}>
               {manualOnly

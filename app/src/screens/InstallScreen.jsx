@@ -69,7 +69,7 @@ export default function InstallScreen({ onBack }) {
 
   const handleInstall = async () => {
     const outcome = await promptInstall()
-    if (outcome === 'accepted') setMessage('설치되었습니다! 홈 화면에서 말씀암송을 찾아보세요.')
+    if (outcome === 'accepted') setMessage('설치되었습니다! 홈 화면에서 아이템 창고를 찾아보세요.')
   }
 
   const copyLink = async () => {
@@ -109,7 +109,7 @@ export default function InstallScreen({ onBack }) {
         {/* Hero */}
         <div className={styles.hero}>
           <img src="./icons/icon-192.png" alt="" className={styles.appIcon} />
-          <h1 className={styles.title}>말씀암송 앱 설치</h1>
+          <h1 className={styles.title}>아이템 창고 앱 설치</h1>
           <p className={styles.subtitle}>
             홈 화면에 추가하면 앱처럼 바로 열리고,<br />한 번 들은 구절은 인터넷 없이도 들을 수 있어요.
           </p>
@@ -121,7 +121,7 @@ export default function InstallScreen({ onBack }) {
             <span className={styles.statusIcon}>✓</span>
             <div>
               <p className={styles.statusTitle}>이미 설치되어 있어요</p>
-              <p className={styles.statusDesc}>홈 화면의 말씀암송 아이콘으로 실행하세요.</p>
+              <p className={styles.statusDesc}>홈 화면의 아이템 창고 아이콘으로 실행하세요.</p>
             </div>
           </div>
         ) : inAppBrowser ? (
